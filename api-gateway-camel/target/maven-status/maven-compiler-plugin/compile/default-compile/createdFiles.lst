@@ -1,0 +1,4 @@
+com\classroom\gateway\ApiGatewayCamelApplication.class
+com\classroom\gateway\route\BookingRoute.class
+com\classroom\gateway\config\JacksonConfig.class
+com\classroom\gateway\exception\UnsupportedMediaTypeException.class

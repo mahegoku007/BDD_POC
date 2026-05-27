@@ -1,0 +1,29 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Shared ConfigMap
+# Contains non-sensitive configuration consumed by all microservices.
+# Sensitive values (credentials) live in rabbitmq-secret.
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: classroom-config
+  namespace: classroom-booking
+  labels:
+    app.kubernetes.io/managed-by: kubectl
+data:
+  # RabbitMQ connection — matches ${RABBITMQ_HOST} placeholders in application.yml
+  RABBITMQ_HOST: "rabbitmq-service"
+  RABBITMQ_PORT: "5672"
+
+  # Inter-service URLs (resolved via Kubernetes DNS)
+  BOOKING_SERVICE_URL: "http://service-booking:8081"
+  AVAILABILITY_SERVICE_URL: "http://service-availability:8082"
+  NOTIFICATION_SERVICE_URL: "http://service-notification:8083"
+
+  # Spring profile active in cluster
+  SPRING_PROFILES_ACTIVE: "prod"
+
+  # Log level
+  LOG_LEVEL_ROOT: "INFO"
+  LOG_LEVEL_CLASSROOM: "DEBUG"
+

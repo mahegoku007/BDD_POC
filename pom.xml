@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <!-- ─────────────────────────────────────────
+       Parent coordinates
+       ───────────────────────────────────────── -->
+  <groupId>com.classroom</groupId>
+  <artifactId>classroom-booking-system</artifactId>
+  <version>1.0.0-SNAPSHOT</version>
+  <packaging>pom</packaging>
+  <name>Classroom Booking System - Parent</name>
+  <description>Multi-module Spring Boot + Apache Camel + RabbitMQ classroom booking system</description>
+
+  <!-- ─────────────────────────────────────────
+       Child modules
+       ───────────────────────────────────────── -->
+  <modules>
+    <module>common-lib</module>
+    <module>api-gateway-camel</module>
+    <module>service-booking</module>
+    <module>service-availability</module>
+    <module>service-notification</module>
+    <module>integration-tests</module>
+  </modules>
+
+  <!-- ─────────────────────────────────────────
+       Global properties
+       ───────────────────────────────────────── -->
+  <properties>
+    <!-- Java -->
+    <java.version>17</java.version>
+    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+    <!-- Spring Boot -->
+    <spring-boot.version>3.3.5</spring-boot.version>
+
+    <!-- Apache Camel -->
+    <camel.version>4.8.0</camel.version>
+
+    <!-- Messaging -->
+    <rabbitmq.version>5.21.0</rabbitmq.version>
+
+    <!-- Persistence -->
+    <h2.version>2.3.232</h2.version>
+
+    <!-- Testing -->
+    <cucumber.version>7.18.0</cucumber.version>
+    <junit-platform.version>1.10.3</junit-platform.version>
+
+    <!-- Utility -->
+    <lombok.version>1.18.34</lombok.version>
+    <jackson.version>2.17.2</jackson.version>
+
+    <!-- Maven plugins -->
+    <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
+    <maven-surefire-plugin.version>3.3.1</maven-surefire-plugin.version>
+    <maven-failsafe-plugin.version>3.3.1</maven-failsafe-plugin.version>
+  </properties>
+
+  <!-- ─────────────────────────────────────────
+       Dependency management – versions are
+       centralised here; child modules inherit
+       without specifying a version.
+       ───────────────────────────────────────── -->
+  <dependencyManagement>
+    <dependencies>
+
+      <!-- ── Spring Boot BOM ───────────────── -->
+      <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-dependencies</artifactId>
+        <version>${spring-boot.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
+      <!-- ── Apache Camel BOM ──────────────── -->
+      <dependency>
+        <groupId>org.apache.camel.springboot</groupId>
+        <artifactId>camel-spring-boot-bom</artifactId>
+        <version>${camel.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
+      <!-- ── Internal modules ──────────────── -->
+      <dependency>
+        <groupId>com.classroom</groupId>
+        <artifactId>common-lib</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
+      <!-- ── Lombok ────────────────────────── -->
+      <dependency>
+        <groupId>org.projectlombok</groupId>
+        <artifactId>lombok</artifactId>
+        <version>${lombok.version}</version>
+        <scope>provided</scope>
+      </dependency>
+
+      <!-- ── Jackson (JSON) ────────────────── -->
+      <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-databind</artifactId>
+        <version>${jackson.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.fasterxml.jackson.datatype</groupId>
+        <artifactId>jackson-datatype-jsr310</artifactId>
+        <version>${jackson.version}</version>
+      </dependency>
+
+      <!-- ── RabbitMQ client ───────────────── -->
+      <dependency>
+        <groupId>com.rabbitmq</groupId>
+        <artifactId>amqp-client</artifactId>
+        <version>${rabbitmq.version}</version>
+      </dependency>
+
+      <!-- ── H2 in-memory database ─────────── -->
+      <dependency>
+        <groupId>com.h2database</groupId>
+        <artifactId>h2</artifactId>
+        <version>${h2.version}</version>
+        <scope>runtime</scope>
+      </dependency>
+
+      <!-- ── Cucumber ──────────────────────── -->
+      <dependency>
+        <groupId>io.cucumber</groupId>
+        <artifactId>cucumber-java</artifactId>
+        <version>${cucumber.version}</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>io.cucumber</groupId>
+        <artifactId>cucumber-spring</artifactId>
+        <version>${cucumber.version}</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>io.cucumber</groupId>
+        <artifactId>cucumber-junit-platform-engine</artifactId>
+        <version>${cucumber.version}</version>
+        <scope>test</scope>
+      </dependency>
+
+      <!-- ── JUnit Platform ────────────────── -->
+      <dependency>
+        <groupId>org.junit.platform</groupId>
+        <artifactId>junit-platform-suite</artifactId>
+        <version>${junit-platform.version}</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.junit.platform</groupId>
+        <artifactId>junit-platform-launcher</artifactId>
+        <version>${junit-platform.version}</version>
+        <scope>test</scope>
+      </dependency>
+
+    </dependencies>
+  </dependencyManagement>
+
+  <!-- ─────────────────────────────────────────
+       Dependencies inherited by ALL modules
+       ───────────────────────────────────────── -->
+  <dependencies>
+    <!-- Lombok – available everywhere at compile time -->
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <scope>provided</scope>
+    </dependency>
+  </dependencies>
+
+  <!-- ─────────────────────────────────────────
+       Build plugin management
+       ───────────────────────────────────────── -->
+  <build>
+    <pluginManagement>
+      <plugins>
+
+        <!-- Java compiler -->
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>${maven-compiler-plugin.version}</version>
+          <configuration>
+            <source>${java.version}</source>
+            <target>${java.version}</target>
+            <encoding>UTF-8</encoding>
+            <!-- Required by Spring Boot 3.2+ for parameter name retention -->
+            <parameters>true</parameters>
+            <!-- Lombok annotation processing -->
+            <annotationProcessorPaths>
+              <path>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+              </path>
+            </annotationProcessorPaths>
+          </configuration>
+        </plugin>
+
+        <!-- Unit test runner -->
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>${maven-surefire-plugin.version}</version>
+          <configuration>
+            <!-- JUnit 5 / Cucumber JUnit Platform Engine -->
+            <includes>
+              <include>**/*Test.java</include>
+              <include>**/*Tests.java</include>
+              <include>**/*Suite.java</include>
+            </includes>
+          </configuration>
+        </plugin>
+
+        <!-- Integration / BDD test runner -->
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-failsafe-plugin</artifactId>
+          <version>${maven-failsafe-plugin.version}</version>
+          <executions>
+            <execution>
+              <goals>
+                <goal>integration-test</goal>
+                <goal>verify</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+
+        <!-- Spring Boot plugin – configured in spring-boot child modules -->
+        <plugin>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot-maven-plugin</artifactId>
+          <version>${spring-boot.version}</version>
+          <configuration>
+            <excludes>
+              <exclude>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+              </exclude>
+            </excludes>
+          </configuration>
+        </plugin>
+
+      </plugins>
+    </pluginManagement>
+
+    <!-- Plugins active for every module -->
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
+
+</project>
+

@@ -1,0 +1,12 @@
+com\classroom\bdd\config\ScenarioContext.class
+com\classroom\bdd\config\TestInfrastructureConfig.class
+com\classroom\bdd\steps\ApiGatewayStepDefinitions.class
+com\classroom\bdd\config\CucumberSuite.class
+com\classroom\bdd\steps\NotificationStepDefinitions.class
+com\classroom\bdd\steps\MessagingFlowStepDefinitions.class
+com\classroom\bdd\steps\EndToEndStepDefinitions.class
+com\classroom\bdd\config\IntegrationTestApplication.class
+com\classroom\bdd\steps\CommonStepDefinitions.class
+com\classroom\bdd\steps\ClassroomBookingStepDefinitions.class
+com\classroom\bdd\steps\AvailabilityStepDefinitions.class
+com\classroom\bdd\config\CucumberSpringConfig.class

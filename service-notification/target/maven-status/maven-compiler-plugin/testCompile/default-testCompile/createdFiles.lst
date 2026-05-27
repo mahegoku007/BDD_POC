@@ -1,0 +1,7 @@
+com\classroom\notification\NotificationConsumerTest.class
+com\classroom\notification\NotificationServiceTest$Idempotency.class
+com\classroom\notification\NotificationServiceTest$SendConfirmation.class
+com\classroom\notification\NotificationServiceApplicationTests.class
+com\classroom\notification\NotificationServiceTest$SendRejection.class
+com\classroom\notification\NotificationServiceTest$NotificationLogQueries.class
+com\classroom\notification\NotificationServiceTest.class

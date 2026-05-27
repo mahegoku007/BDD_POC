@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile name="Annotation profile for Classroom Booking System - Parent" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.34/lombok-1.18.34.jar" />
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.34/lombok-1.18.34.jar" />
+        </processorPath>
+        <module name="service-booking" />
+        <module name="service-notification" />
+        <module name="api-gateway-camel" />
+        <module name="common-lib" />
+        <module name="integration-tests" />
+        <module name="service-availability" />
+      </profile>
+    </annotationProcessing>
+  </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="api-gateway-camel" options="-parameters" />
+      <module name="classroom-booking-system" options="-parameters" />
+      <module name="common-lib" options="-parameters" />
+      <module name="integration-tests" options="-parameters" />
+      <module name="service-availability" options="-parameters" />
+      <module name="service-booking" options="-parameters" />
+      <module name="service-notification" options="-parameters" />
+    </option>
+  </component>
+</project>

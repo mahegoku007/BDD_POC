@@ -1,0 +1,50 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: service-notification
+
+  # ── RabbitMQ connection ────────────────────────────────────────────────────
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    # Wait up to 30 s for RabbitMQ to accept the TCP connection (K8s startup)
+    connection-timeout: 30000
+    listener:
+      simple:
+        # Retry failed messages up to 3 times before they go to DLX
+        retry:
+          enabled: true
+          initial-interval: 1000ms
+          max-attempts: 3
+          multiplier: 2.0
+        # Acknowledge manually so a failed processing doesn't silently drop messages
+        acknowledge-mode: auto
+
+  # ── Jackson ────────────────────────────────────────────────────────────────
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+# ── Management / Actuator ──────────────────────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# ── Logging ────────────────────────────────────────────────────────────────
+logging:
+  level:
+    root: INFO
+    com.classroom.notification: DEBUG
+    org.springframework.amqp: DEBUG
+

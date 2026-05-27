@@ -1,0 +1,8 @@
+D:\Work\Java\BDD_POC\service-availability\src\main\java\com\classroom\availability\AvailabilityServiceApplication.java
+D:\Work\Java\BDD_POC\service-availability\src\main\java\com\classroom\availability\config\RabbitMQConfig.java
+D:\Work\Java\BDD_POC\service-availability\src\main\java\com\classroom\availability\controller\AvailabilityTestController.java
+D:\Work\Java\BDD_POC\service-availability\src\main\java\com\classroom\availability\messaging\AvailabilityConsumer.java
+D:\Work\Java\BDD_POC\service-availability\src\main\java\com\classroom\availability\messaging\AvailabilityProducer.java
+D:\Work\Java\BDD_POC\service-availability\src\main\java\com\classroom\availability\model\BookingRecord.java
+D:\Work\Java\BDD_POC\service-availability\src\main\java\com\classroom\availability\repository\BookingRecordRepository.java
+D:\Work\Java\BDD_POC\service-availability\src\main\java\com\classroom\availability\service\AvailabilityService.java

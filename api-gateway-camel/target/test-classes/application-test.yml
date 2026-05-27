@@ -1,0 +1,21 @@
+# ── Test profile for api-gateway-camel ────────────────────────────────────
+# Activated by @ActiveProfiles("test").
+# - Disables RabbitMQ auto-configuration (no broker needed for route unit tests)
+# - Points booking service URL at a placeholder (AdviceWith replaces it in tests)
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
+
+# Booking service URL is overridden by AdviceWith in tests;
+# this value must be parseable but won't actually be called.
+services:
+  booking:
+    url: http://localhost:9999
+
+logging:
+  level:
+    root: WARN
+    com.classroom.gateway: DEBUG
+    org.apache.camel: WARN
+

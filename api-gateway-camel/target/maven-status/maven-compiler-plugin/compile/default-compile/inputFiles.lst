@@ -1,0 +1,4 @@
+D:\Work\Java\BDD_POC\api-gateway-camel\src\main\java\com\classroom\gateway\ApiGatewayCamelApplication.java
+D:\Work\Java\BDD_POC\api-gateway-camel\src\main\java\com\classroom\gateway\config\JacksonConfig.java
+D:\Work\Java\BDD_POC\api-gateway-camel\src\main\java\com\classroom\gateway\exception\UnsupportedMediaTypeException.java
+D:\Work\Java\BDD_POC\api-gateway-camel\src\main\java\com\classroom\gateway\route\BookingRoute.java

@@ -1,0 +1,5 @@
+com\classroom\availability\AvailabilityServiceTest$CheckAvailability.class
+com\classroom\availability\AvailabilityServiceTest$ConfirmBooking.class
+com\classroom\availability\AvailabilityServiceApplicationTests.class
+com\classroom\availability\AvailabilityConsumerTest.class
+com\classroom\availability\AvailabilityServiceTest.class

@@ -1,0 +1,9 @@
+com\classroom\availability\service\AvailabilityService.class
+com\classroom\availability\config\RabbitMQConfig.class
+com\classroom\availability\messaging\AvailabilityProducer.class
+com\classroom\availability\model\BookingRecord$BookingRecordBuilder.class
+com\classroom\availability\repository\BookingRecordRepository.class
+com\classroom\availability\AvailabilityServiceApplication.class
+com\classroom\availability\controller\AvailabilityTestController.class
+com\classroom\availability\model\BookingRecord.class
+com\classroom\availability\messaging\AvailabilityConsumer.class

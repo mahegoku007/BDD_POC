@@ -1,0 +1,55 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway-camel
+
+  # ── Jackson ────────────────────────────────────────────────────────────────
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+  # ── RabbitMQ (declared for auto-configuration; gateway may publish directly) ─
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+# ── Apache Camel ──────────────────────────────────────────────────────────
+camel:
+  springboot:
+    name: api-gateway-camel
+    # Keep application alive (no main route consuming continuously)
+    main-run-controller: true
+  # Stream cache: buffer large request/response bodies in memory before logging
+  stream-caching-enabled: true
+
+# ── Downstream service URLs ────────────────────────────────────────────────
+services:
+  booking:
+    # Override with BOOKING_SERVICE_URL env var in Docker/K8s
+    url: ${BOOKING_SERVICE_URL:http://localhost:8081}
+
+# ── Management / Actuator ──────────────────────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,camel
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+
+# ── Logging ────────────────────────────────────────────────────────────────
+logging:
+  level:
+    root: INFO
+    com.classroom.gateway: DEBUG
+    org.apache.camel: INFO
+    org.apache.camel.component.http: DEBUG
+

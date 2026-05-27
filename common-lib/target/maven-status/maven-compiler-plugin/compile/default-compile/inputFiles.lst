@@ -1,0 +1,11 @@
+D:\Work\Java\BDD_POC\common-lib\src\main\java\com\classroom\common\dto\AvailabilityCheckResponse.java
+D:\Work\Java\BDD_POC\common-lib\src\main\java\com\classroom\common\dto\BookingRequest.java
+D:\Work\Java\BDD_POC\common-lib\src\main\java\com\classroom\common\dto\BookingResponse.java
+D:\Work\Java\BDD_POC\common-lib\src\main\java\com\classroom\common\dto\ErrorResponse.java
+D:\Work\Java\BDD_POC\common-lib\src\main\java\com\classroom\common\dto\TimeSlot.java
+D:\Work\Java\BDD_POC\common-lib\src\main\java\com\classroom\common\enums\AvailabilityStatus.java
+D:\Work\Java\BDD_POC\common-lib\src\main\java\com\classroom\common\enums\BookingStatus.java
+D:\Work\Java\BDD_POC\common-lib\src\main\java\com\classroom\common\util\BookingIdGenerator.java
+D:\Work\Java\BDD_POC\common-lib\src\main\java\com\classroom\common\util\BookingResponseFactory.java
+D:\Work\Java\BDD_POC\common-lib\src\main\java\com\classroom\common\util\RabbitMQConstants.java
+D:\Work\Java\BDD_POC\common-lib\src\main\java\com\classroom\common\util\TimeSlotUtils.java

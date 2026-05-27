@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <!-- ─────────────────────────────────────────
+       Inherits version management from parent
+       ───────────────────────────────────────── -->
+  <parent>
+    <groupId>com.classroom</groupId>
+    <artifactId>classroom-booking-system</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>common-lib</artifactId>
+  <packaging>jar</packaging>
+  <name>Common Library – DTOs, Enums and Utilities</name>
+  <description>
+    Shared module consumed by all services.
+    Contains BookingRequest, BookingResponse, AvailabilityStatus,
+    time-slot helpers, and other cross-cutting types.
+    NOTE: This module does NOT contain a Spring Boot main class
+    and is NOT an executable JAR.
+  </description>
+
+  <dependencies>
+
+    <!-- Jackson – DTO serialisation / deserialisation -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.datatype</groupId>
+      <artifactId>jackson-datatype-jsr310</artifactId>
+    </dependency>
+
+    <!-- Spring context (for @Component, validation annotations) -->
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-context</artifactId>
+    </dependency>
+
+    <!-- Bean Validation API (Jakarta) -->
+    <dependency>
+      <groupId>jakarta.validation</groupId>
+      <artifactId>jakarta.validation-api</artifactId>
+    </dependency>
+
+    <!-- Unit testing -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+  </dependencies>
+
+  <!-- No spring-boot-maven-plugin – this is a plain library JAR -->
+
+</project>
+

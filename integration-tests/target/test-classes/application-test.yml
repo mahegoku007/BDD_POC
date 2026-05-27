@@ -1,0 +1,33 @@
+# ── Cucumber BDD test configuration ───────────────────────────────────────
+# Applied when @ActiveProfiles("test") is active (set in CucumberSpringConfig)
+
+# ── RabbitMQ connection (must be running – start via docker-compose up -d) ─
+spring:
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    # Don't start listener containers – tests only publish/receive manually
+    listener:
+      simple:
+        auto-startup: false
+
+# ── External service URLs (override via env vars for CI/Docker) ────────────
+services:
+  gateway:
+    url: ${GATEWAY_URL:http://localhost:8080}
+  booking:
+    url: ${BOOKING_URL:http://localhost:8081}
+  availability:
+    url: ${AVAILABILITY_URL:http://localhost:8082}
+  notification:
+    url: ${NOTIFICATION_URL:http://localhost:8083}
+
+# ── Logging ────────────────────────────────────────────────────────────────
+logging:
+  level:
+    root: WARN
+    com.classroom.bdd: DEBUG
+    org.springframework.amqp: WARN
+

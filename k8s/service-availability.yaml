@@ -1,0 +1,106 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Availability Service – port 8082
+# Uses embedded H2 (in-memory) — no separate DB pod needed.
+# For persistent storage, replace H2 with PostgreSQL (see note at bottom).
+# Rancher Desktop (containerd): nerdctl build -t classroom/service-availability:latest ./service-availability
+# Rancher Desktop (dockerd):    docker build -t classroom/service-availability:latest ./service-availability
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-availability
+  namespace: classroom-booking
+  labels:
+    app.kubernetes.io/name: service-availability
+    app.kubernetes.io/component: availability
+spec:
+  # Keep replicas: 1 while using in-memory H2.
+  # Scale out only when H2 is replaced with a shared external DB.
+  replicas: 1
+  selector:
+    matchLabels:
+      app: service-availability
+  template:
+    metadata:
+      labels:
+        app: service-availability
+        app.kubernetes.io/name: service-availability
+    spec:
+      # No init container needed — Spring AMQP retries the connection automatically.
+      containers:
+        - name: service-availability
+          image: classroom/service-availability:latest
+          imagePullPolicy: IfNotPresent   # Rancher Desktop: image is built locally into containerd/dockerd
+          ports:
+            - name: http
+              containerPort: 8082
+          envFrom:
+            - configMapRef:
+                name: classroom-config
+          env:
+            - name: RABBITMQ_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secret
+                  key: username
+            - name: RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secret
+                  key: password
+            - name: SERVER_PORT
+              value: "8082"
+            # H2 in-memory – data lives only for pod lifetime
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:h2:mem:availabilitydb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE"
+            - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+              value: "org.h2.Driver"
+            - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+              value: "create-drop"
+          resources:
+            requests:
+              cpu: "150m"
+              memory: "256Mi"
+            limits:
+              cpu: "400m"
+              memory: "512Mi"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8082
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8082
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-availability
+  namespace: classroom-booking
+  labels:
+    app.kubernetes.io/name: service-availability
+    app.kubernetes.io/component: availability
+spec:
+  selector:
+    app: service-availability
+  ports:
+    - name: http
+      port: 8082
+      targetPort: 8082
+  type: ClusterIP
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NOTE: To replace H2 with PostgreSQL for multi-replica support:
+# 1. Deploy a postgres pod (or use managed cloud DB)
+# 2. Change SPRING_DATASOURCE_URL to jdbc:postgresql://postgres-service:5432/availability
+# 3. Add SPRING_DATASOURCE_USERNAME / PASSWORD env vars
+# 4. Then you can safely increase replicas above 1
+# ─────────────────────────────────────────────────────────────────────────────
+

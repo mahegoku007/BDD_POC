@@ -1,0 +1,88 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Notification Service – port 8083
+# Stateless consumer – safe to scale horizontally.
+# Rancher Desktop (containerd): nerdctl build -t classroom/service-notification:latest ./service-notification
+# Rancher Desktop (dockerd):    docker build -t classroom/service-notification:latest ./service-notification
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-notification
+  namespace: classroom-booking
+  labels:
+    app.kubernetes.io/name: service-notification
+    app.kubernetes.io/component: notification
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: service-notification
+  template:
+    metadata:
+      labels:
+        app: service-notification
+        app.kubernetes.io/name: service-notification
+    spec:
+      # No init container needed — Spring AMQP retries the connection automatically.
+      containers:
+        - name: service-notification
+          image: classroom/service-notification:latest
+          imagePullPolicy: IfNotPresent   # Rancher Desktop: image is built locally into containerd/dockerd
+          ports:
+            - name: http
+              containerPort: 8083
+          envFrom:
+            - configMapRef:
+                name: classroom-config
+          env:
+            - name: RABBITMQ_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secret
+                  key: username
+            - name: RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secret
+                  key: password
+            - name: SERVER_PORT
+              value: "8083"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "192Mi"
+            limits:
+              cpu: "300m"
+              memory: "384Mi"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8083
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8083
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-notification
+  namespace: classroom-booking
+  labels:
+    app.kubernetes.io/name: service-notification
+    app.kubernetes.io/component: notification
+spec:
+  selector:
+    app: service-notification
+  ports:
+    - name: http
+      port: 8083
+      targetPort: 8083
+  type: ClusterIP
+

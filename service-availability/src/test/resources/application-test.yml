@@ -1,0 +1,25 @@
+# ── Test profile for service-availability ─────────────────────────────────
+# Activated by @ActiveProfiles("test").
+# Disables real RabbitMQ so unit / slice tests run without a broker.
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
+
+  # H2 stays enabled – @DataJpaTest and @SpringBootTest still use it
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+
+logging:
+  level:
+    root: WARN
+    com.classroom.availability: DEBUG
+

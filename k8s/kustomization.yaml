@@ -1,0 +1,66 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Kustomize – applies ALL manifests in the correct order
+# Tested with: Rancher Desktop (containerd or dockerd, Traefik ingress)
+#
+# Pre-requisites:
+#   1. Build all JARs:  mvn clean package -DskipTests  (from project root)
+#   2. Build images with nerdctl into the k8s.io namespace (Rancher Desktop containerd):
+#        nerdctl --namespace k8s.io build -t classroom/api-gateway:latest          ./api-gateway-camel
+#        nerdctl --namespace k8s.io build -t classroom/service-booking:latest      ./service-booking
+#        nerdctl --namespace k8s.io build -t classroom/service-availability:latest ./service-availability
+#        nerdctl --namespace k8s.io build -t classroom/service-notification:latest ./service-notification
+#
+#      NOTE: If you see "error getting credentials - exit status 22", run this ONCE to fix it:
+#        [System.IO.File]::WriteAllText("\\wsl$\rancher-desktop\root\.docker\config.json",
+#          '{"auths":{"registry-1.docker.io":{}},"credsStore":"","credHelpers":{}}',
+#          [System.Text.Encoding]::ASCII)
+#   3. No hosts file changes needed — Ingress matches localhost directly.
+#
+# Deploy everything:
+#   kubectl apply -k k8s/
+#
+# Tear down:
+#   kubectl delete -k k8s/
+#
+# Tear down + delete RabbitMQ data volume:
+#   kubectl delete -k k8s/
+#   kubectl delete pvc rabbitmq-pvc -n classroom-booking
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: classroom-booking
+
+resources:
+  # 1. Namespace first
+  - namespace.yaml
+
+  # 2. Secrets & config
+  - rabbitmq-secret.yaml
+  - configmap.yaml
+
+  # 3. Storage
+  - rabbitmq-pvc.yaml
+
+  # 4. Infrastructure (RabbitMQ)
+  - rabbitmq-deployment.yaml
+  - rabbitmq-service.yaml
+
+  # 5. Microservices
+  - service-booking.yaml
+  - service-availability.yaml
+  - service-notification.yaml
+
+  # 6. Gateway (last – depends on all services being up)
+  - api-gateway-deployment.yaml
+  - api-gateway-service.yaml
+
+  # 7. Ingress & autoscaling
+  - ingress.yaml
+  - hpa.yaml
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/part-of: classroom-booking-system
+  app.kubernetes.io/managed-by: kustomize
+

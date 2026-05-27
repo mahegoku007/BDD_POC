@@ -1,0 +1,88 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Booking Service – port 8081
+# Rancher Desktop (containerd): nerdctl build -t classroom/service-booking:latest ./service-booking
+# Rancher Desktop (dockerd):    docker build -t classroom/service-booking:latest ./service-booking
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-booking
+  namespace: classroom-booking
+  labels:
+    app.kubernetes.io/name: service-booking
+    app.kubernetes.io/component: booking
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: service-booking
+  template:
+    metadata:
+      labels:
+        app: service-booking
+        app.kubernetes.io/name: service-booking
+    spec:
+      # No init container needed — Spring AMQP retries the connection automatically.
+      # Configure retry in application.yml: spring.rabbitmq.listener.simple.retry.*
+      containers:
+        - name: service-booking
+          image: classroom/service-booking:latest
+          imagePullPolicy: IfNotPresent   # Rancher Desktop: image is built locally into containerd/dockerd
+          ports:
+            - name: http
+              containerPort: 8081
+          envFrom:
+            - configMapRef:
+                name: classroom-config
+          env:
+            - name: RABBITMQ_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secret
+                  key: username
+            - name: RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secret
+                  key: password
+            - name: SERVER_PORT
+              value: "8081"
+          resources:
+            requests:
+              cpu: "150m"
+              memory: "256Mi"
+            limits:
+              cpu: "400m"
+              memory: "512Mi"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8081
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-booking
+  namespace: classroom-booking
+  labels:
+    app.kubernetes.io/name: service-booking
+    app.kubernetes.io/component: booking
+spec:
+  selector:
+    app: service-booking
+  ports:
+    - name: http
+      port: 8081
+      targetPort: 8081
+  type: ClusterIP
+

@@ -1,0 +1,14 @@
+# ── Test profile for service-booking ──────────────────────────────────────
+# This profile is activated by @ActiveProfiles("test") in tests.
+# It replaces the real RabbitMQ connection with a mock to allow the Spring
+# context to start without a running broker.
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
+
+logging:
+  level:
+    root: WARN
+    com.classroom.booking: DEBUG
+

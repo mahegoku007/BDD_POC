@@ -1,0 +1,39 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Ingress – Traefik (pre-installed in Rancher Desktop)
+#
+# No hosts file changes needed.
+# Omitting 'host:' makes Traefik match ALL hostnames, including localhost.
+#
+# Access: http://localhost/bookings
+#         http://localhost/actuator/health
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: classroom-ingress
+  namespace: classroom-booking
+  labels:
+    app.kubernetes.io/name: classroom-ingress
+  annotations:
+    # Traefik – use the 'web' entrypoint (HTTP on port 80)
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik   # Rancher Desktop's built-in Ingress class
+  rules:
+    - http:   # no 'host:' → matches localhost and any other hostname
+        paths:
+          - path: /bookings
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 8080
+          - path: /actuator
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 8080
+

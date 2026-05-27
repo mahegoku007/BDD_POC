@@ -1,0 +1,46 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: service-booking
+
+  # ── RabbitMQ connection ────────────────────────────────────────────────────
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    # Wait up to 30 s for RabbitMQ to accept the TCP connection (K8s startup)
+    connection-timeout: 30000
+    # Enable publisher confirms so we know the broker received each message
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      # Mandatory flag: throw exception if no queue is bound for the routing key
+      mandatory: true
+
+  # ── Jackson ────────────────────────────────────────────────────────────────
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+# ── Management / Actuator ──────────────────────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# ── Logging ────────────────────────────────────────────────────────────────
+logging:
+  level:
+    root: INFO
+    com.classroom.booking: DEBUG
+    org.springframework.amqp: DEBUG
+

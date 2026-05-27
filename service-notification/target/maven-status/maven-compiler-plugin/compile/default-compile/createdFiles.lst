@@ -1,0 +1,9 @@
+com\classroom\notification\model\NotificationType.class
+com\classroom\notification\config\RabbitMQConfig.class
+com\classroom\notification\model\NotificationRecord$NotificationRecordBuilder.class
+com\classroom\notification\service\NotificationLog.class
+com\classroom\notification\service\NotificationService.class
+com\classroom\notification\messaging\NotificationConsumer.class
+com\classroom\notification\controller\NotificationTestController.class
+com\classroom\notification\NotificationServiceApplication.class
+com\classroom\notification\model\NotificationRecord.class

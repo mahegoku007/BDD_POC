@@ -1,0 +1,12 @@
+# docker-compose.yml has been removed.
+#
+# RabbitMQ is now deployed exclusively via Kubernetes manifests.
+# See k8s/rabbitmq-deployment.yaml, k8s/rabbitmq-service.yaml, and k8s/rabbitmq-pvc.yaml.
+#
+# To start the full stack:
+#   kubectl apply -k k8s/
+#
+# To access RabbitMQ from your host machine:
+#   kubectl port-forward svc/rabbitmq-service    5672:5672  -n classroom-booking
+#   kubectl port-forward svc/rabbitmq-management-svc 15672:15672 -n classroom-booking
+#   # Management UI: http://localhost:15672  (guest / guest)
