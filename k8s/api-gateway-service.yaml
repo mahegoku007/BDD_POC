@@ -1,4 +1,4 @@
-# ClusterIP – internal access from other services
+# LoadBalancer – exposes gateway on localhost:8080 (Rancher Desktop binds automatically)
 apiVersion: v1
 kind: Service
 metadata:
@@ -14,25 +14,7 @@ spec:
     - name: http
       port: 8080
       targetPort: 8080
-  type: ClusterIP
----
-# LoadBalancer – external entry point for clients / BDD tests
-# Rancher Desktop automatically binds this to localhost:80 — no tunnel needed.
-# Access: http://localhost/bookings
-apiVersion: v1
-kind: Service
-metadata:
-  name: api-gateway-lb
-  namespace: classroom-booking
-  labels:
-    app.kubernetes.io/name: api-gateway
-    app.kubernetes.io/component: gateway-external
-spec:
-  selector:
-    app: api-gateway
-  ports:
-    - name: http
-      port: 80
-      targetPort: 8080
   type: LoadBalancer
+
+
 

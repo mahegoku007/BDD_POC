@@ -25,6 +25,8 @@ camel:
     name: api-gateway-camel
     # Keep application alive (no main route consuming continuously)
     main-run-controller: true
+    # Load XML route definitions from classpath:camel/*.xml
+    routes-include-pattern: classpath:camel/*.xml
   # Stream cache: buffer large request/response bodies in memory before logging
   stream-caching-enabled: true
 
@@ -33,6 +35,15 @@ services:
   booking:
     # Override with BOOKING_SERVICE_URL env var in Docker/K8s
     url: ${BOOKING_SERVICE_URL:http://localhost:8081}
+  audit:
+    # Override with AUDIT_SERVICE_URL env var in Docker/K8s
+    url: ${AUDIT_SERVICE_URL:http://localhost:8084}
+
+# ── Route Slip pipeline (driven by ConfigMap in K8s) ───────────────────────
+# Comma-separated list of direct: endpoints the booking flows through.
+# Change the ConfigMap and restart the pod to alter the pipeline.
+gateway:
+  route-slip: ${ROUTE_SLIP_PIPELINE:direct:submitBooking,direct:audit}
 
 # ── Management / Actuator ──────────────────────────────────────────────────
 management:
@@ -52,4 +63,3 @@ logging:
     com.classroom.gateway: DEBUG
     org.apache.camel: INFO
     org.apache.camel.component.http: DEBUG
-

@@ -1,7 +1,7 @@
 # ── Cucumber BDD test configuration ───────────────────────────────────────
 # Applied when @ActiveProfiles("test") is active (set in CucumberSpringConfig)
 
-# ── RabbitMQ connection (must be running – start via docker-compose up -d) ─
+# ── RabbitMQ connection (must be running – deploy via kubectl apply -k k8s/) ─
 spring:
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
@@ -23,6 +23,8 @@ services:
     url: ${AVAILABILITY_URL:http://localhost:8082}
   notification:
     url: ${NOTIFICATION_URL:http://localhost:8083}
+  audit:
+    url: ${AUDIT_URL:http://localhost:8084}
 
 # ── Logging ────────────────────────────────────────────────────────────────
 logging:

@@ -24,6 +24,7 @@
     <module>service-booking</module>
     <module>service-availability</module>
     <module>service-notification</module>
+    <module>service-audit</module>
     <module>integration-tests</module>
   </modules>
 

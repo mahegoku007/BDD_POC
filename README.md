@@ -32,14 +32,19 @@ A production-ready, event-driven microservices system built with **Spring Boot 3
 │  ┌──────────────┐   HTTP   ┌──────────────────┐   AMQP (booking.req)    │
 │  │   Client     │ ──────►  │  api-gateway     │ ──────────────────────► │
 │  │  (curl /     │  :8080   │  (Camel :8080)   │                         │
-│  │   browser)   │          └──────────────────┘                         │
-│  └──────────────┘                  │                                     │
-│                                    │ HTTP forward                        │
-│                                    ▼                                     │
-│                          ┌──────────────────┐   AMQP (booking.req)      │
-│                          │ service-booking  │ ──────────────────────►   │
-│                          │   (:8081)        │                            │
-│                          └──────────────────┘                            │
+│  │   browser)   │          └──────┬───────────┘                         │
+│  └──────────────┘                 │                                      │
+│                                   │ HTTP forward (Route Slip)            │
+│                                   ▼                                      │
+│                         ┌──────────────────┐   AMQP (booking.req)       │
+│                         │ service-booking  │ ──────────────────────►    │
+│                         │   (:8081)        │                             │
+│                         └──────────────────┘                             │
+│                                   │                                      │
+│                         ┌─────────▼────────┐                             │
+│                         │  service-audit   │ ← audit trail (MongoDB)    │
+│                         │   (:8084)        │                             │
+│                         └──────────────────┘                             │
 │                                                                          │
 │   ┌──────────────────────────────────────────────────────────────────┐  │
 │   │                    RabbitMQ  (:5672)                             │  │
@@ -58,6 +63,11 @@ A production-ready, event-driven microservices system built with **Spring Boot 3
 │                    │service-notification                                  │
 │                    │   (:8083)        │  → logs notification (email sim) │
 │                    └──────────────────┘                                  │
+│                                                                          │
+│   ┌───────────────┐                                                      │
+│   │  MongoDB      │  ← persistent audit trail storage                   │
+│   │  (:27017)     │                                                      │
+│   └───────────────┘                                                      │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -89,18 +99,26 @@ Contains all DTOs, enums, and utilities shared by every service. Nothing in here
 The public-facing entry point built with **Apache Camel 4** REST DSL on Spring Boot's embedded Tomcat.
 
 **Responsibilities:**
-- Expose `POST /bookings` and `GET /actuator/health`
+- Expose `POST /bookings`, `POST /bookings/batch`, and `GET /actuator/health`
 - Deserialise and validate the incoming JSON body (`classroomId`, `requestedBy`, `date`, `timeSlot` must all be present and parseable)
+- Validate time slot ordering (`endTime` must be after `startTime`)
 - Return `400 Bad Request` for any validation failure with a structured error body
+- **Route Slip EIP** — process validated requests through a configurable pipeline (default: `direct:submitBooking,direct:audit`)
 - Forward valid requests to `service-booking` over HTTP (`POST http://service-booking:8081/bookings`)
+- Send audit events to `service-audit` over HTTP (`POST http://service-audit:8084/audit/bookings`)
+- **Batch processing** — `POST /bookings/batch` accepts a JSON array, splits it using Camel's Splitter EIP, processes each through the route slip, and aggregates results
 - Proxy the `202 Accepted` response (with `bookingId`) back to the client
 - Handle error scenarios: `503` if booking service is down, `502` for unexpected upstream responses
 
 **Camel Routes:**
 | Route ID | Trigger | Action |
 |----------|---------|--------|
-| `validate-booking-route` | `direct:validateBooking` | Parse JSON → validate fields → forward |
+| `validate-booking-route` | `direct:validateBooking` | Entry point from REST DSL, delegates to processSingleBooking |
+| `process-single-booking` | `direct:processSingleBooking` | Parse JSON → validate fields → time slot check → route slip |
+| `route-slip-dispatcher` | `direct:routeSlipDispatcher` | Dynamic Route Slip driven by ConfigMap (`ROUTE_SLIP_PIPELINE`) |
 | `submit-booking-route` | `direct:submitBooking` | Serialise, set HTTP headers, call service-booking, proxy response |
+| `audit-route` | `direct:audit` | POST booking payload to service-audit, restore original body |
+| `batch-booking-route` | `direct:batchBooking` | Split JSON array → process each → aggregate into JSON array response |
 | `gateway-info-route` | `direct:gatewayInfo` | Return gateway info JSON on `GET /bookings` |
 
 ---
@@ -145,6 +163,22 @@ Stateless consumer that closes the booking lifecycle by notifying the requester.
 - Build human-readable message strings, log them (simulating email/SMS)
 - Maintain an in-memory `NotificationLog` with full idempotency (duplicate events are silently ignored)
 - Expose test-support REST endpoints (`/test/notifications`, `/test/notifications/summary`) for BDD tests
+
+---
+
+### `service-audit` — Audit Service (port 8084)
+MongoDB-backed audit trail service that records all booking lifecycle events.
+
+**Responsibilities:**
+- Receive audit events from the API Gateway via HTTP (`POST /audit/bookings`)
+- Persist audit records to MongoDB with timestamps, action type, and source information
+- Expose query endpoints for audit trail retrieval (`GET /audit/bookings/{bookingId}`, `GET /audit/classrooms/{classroomId}`)
+- Return `404` for unknown booking IDs
+- Provide chronological ordering of audit events
+
+**Technology:**
+- Spring Data MongoDB for persistence
+- MongoDB 7 deployed as a Kubernetes pod with PVC for data durability
 
 ---
 
@@ -300,6 +334,24 @@ All queues are **durable**. The `booking.requested` queue has a dead-letter exch
 
 ## REST API
 
+### `GET /bookings`
+
+Returns gateway metadata (service name, version, available endpoints).
+
+**Response** `200 OK`:
+```json
+{
+  "service": "api-gateway-camel",
+  "description": "Classroom Booking API Gateway",
+  "endpoints": [
+    "POST /bookings",
+    "POST /bookings/batch",
+    "GET /bookings",
+    "GET /actuator/health"
+  ]
+}
+```
+
 ### `POST /bookings`
 
 Accepts a classroom booking request and returns immediately with `202 Accepted`.
@@ -348,6 +400,38 @@ Standard Spring Boot Actuator health endpoint.
 { "status": "UP", "components": { "rabbit": { "status": "UP" }, ... } }
 ```
 
+### `POST /bookings/batch`
+
+Accepts a JSON array of booking requests and processes each individually. Returns `200 OK` with an array of results.
+
+**Request** (`Content-Type: application/json`):
+```json
+[
+  {
+    "classroomId": "CR-101",
+    "date": "2026-06-25",
+    "timeSlot": { "startTime": "09:00", "endTime": "10:00" },
+    "requestedBy": "alice@example.com"
+  },
+  {
+    "classroomId": "CR-102",
+    "date": "2026-06-25",
+    "timeSlot": { "startTime": "09:00", "endTime": "10:00" },
+    "requestedBy": "bob@example.com"
+  }
+]
+```
+
+**Success Response** `200 OK`:
+```json
+[
+  { "bookingId": "BK-23a7d08d", "classroomId": "CR-101", "status": "PENDING", ... },
+  { "bookingId": "BK-9bc4e1f2", "classroomId": "CR-102", "status": "PENDING", ... }
+]
+```
+
+Items that fail validation will include an `error` field instead of `bookingId`.
+
 ---
 
 ## Validation Rules
@@ -390,7 +474,9 @@ The `integration-tests` module contains a full **Cucumber 7** acceptance test su
 | Feature File | Tag(s) | What It Tests |
 |---|---|---|
 | `api_gateway.feature` | `@api @camel` | Gateway validation, HTTP status codes, Content-Type, health endpoint |
+| `audit_logging.feature` | `@audit @camel` | Audit trail creation, chronological ordering, 404 for unknown IDs |
 | `availability_check.feature` | `@availability` | Overlap detection logic directly against the availability service |
+| `batch_booking.feature` | `@batch @camel @split-aggregate` | Batch submission, mixed results, single-item batch |
 | `classroom_booking.feature` | `@booking` | End-to-end booking flow via gateway → async notification |
 | `end_to_end_flow.feature` | `@end-to-end` | Full system flow, concurrent requests, sequential bookings |
 | `messaging_flow.feature` | `@messaging @rabbitmq` | RabbitMQ queue declarations, payload validation, message routing |
@@ -401,7 +487,9 @@ The `integration-tests` module contains a full **Cucumber 7** acceptance test su
 | Class | Feature(s) |
 |-------|-----------|
 | `ApiGatewayStepDefinitions` | `api_gateway.feature` |
+| `AuditStepDefinitions` | `audit_logging.feature` |
 | `AvailabilityStepDefinitions` | `availability_check.feature` |
+| `BatchBookingStepDefinitions` | `batch_booking.feature` |
 | `ClassroomBookingStepDefinitions` | `classroom_booking.feature` |
 | `EndToEndStepDefinitions` | `end_to_end_flow.feature` |
 | `MessagingFlowStepDefinitions` | `messaging_flow.feature` |
@@ -427,9 +515,9 @@ The BDD suite starts a minimal Spring Boot context (`webEnvironment = NONE`) wit
 |-----------|-----------|
 | Language | Java 17 |
 | Framework | Spring Boot 3.3.5 |
-| API Gateway | Apache Camel 4.8.0 (REST DSL + platform-http) |
+| API Gateway | Apache Camel 4.8.0 (REST DSL + platform-http + Route Slip EIP) |
 | Messaging | RabbitMQ 3.13 + Spring AMQP |
-| Persistence | H2 in-memory + Spring Data JPA |
+| Persistence | H2 in-memory + Spring Data JPA (availability), MongoDB 7 + Spring Data MongoDB (audit) |
 | Build | Maven 3 (multi-module) |
 | Containerisation | Docker / containerd (Rancher Desktop) |
 | Orchestration | Kubernetes via k3s (Rancher Desktop) |
@@ -454,9 +542,14 @@ BDD_POC/
 │       └── util/                    ←  RabbitMQConstants, BookingIdGenerator, …
 │
 ├── api-gateway-camel/               ← Apache Camel gateway (port 8080)
-│   └── src/main/java/com/classroom/gateway/
-│       ├── route/BookingRoute.java  ←  All Camel routes
-│       └── config/JacksonConfig.java
+│   └── src/main/
+│       ├── java/com/classroom/gateway/
+│       │   ├── route/BookingRoute.java       ← REST DSL + Route Slip dispatcher
+│       │   ├── processor/                    ← Camel processors (validation, serialization, batch)
+│       │   └── config/JacksonConfig.java
+│       └── resources/
+│           ├── application.yml               ← Service URLs, route-slip config
+│           └── camel/routes.xml              ← XML DSL routes (validate, submit, audit, batch)
 │
 ├── service-booking/                 ← Booking acceptor (port 8081)
 │   └── src/main/java/com/classroom/booking/
@@ -477,6 +570,12 @@ BDD_POC/
 │       ├── service/                 ←  Message building + NotificationLog
 │       └── controller/              ←  /test/* endpoints for BDD
 │
+├── service-audit/                   ← Audit trail service (port 8084)
+│   └── src/main/java/com/classroom/audit/
+│       ├── controller/              ←  POST /audit/bookings, GET /audit/bookings/{id}
+│       ├── service/                 ←  Audit event persistence
+│       └── model/                   ←  MongoDB document models
+│
 ├── integration-tests/               ← Cucumber BDD acceptance tests
 │   └── src/test/
 │       ├── java/com/classroom/bdd/
@@ -490,15 +589,19 @@ BDD_POC/
 ├── k8s/                             ← Kubernetes manifests
 │   ├── kustomization.yaml           ←  kubectl apply -k k8s/
 │   ├── namespace.yaml
-│   ├── configmap.yaml
-│   ├── rabbitmq-*.yaml
+│   ├── configmap.yaml               ←  Service URLs, route-slip pipeline config
+│   ├── rabbitmq-*.yaml              ←  RabbitMQ deployment, service, PVC, secret
+│   ├── mongodb-deployment.yaml      ←  MongoDB deployment + service
+│   ├── mongodb-secret.yaml          ←  MongoDB credentials
 │   ├── api-gateway-*.yaml
 │   ├── service-booking.yaml
 │   ├── service-availability.yaml
 │   ├── service-notification.yaml
+│   ├── service-audit-deployment.yaml
+│   ├── service-audit-service.yaml
 │   ├── ingress.yaml                 ←  Traefik → /bookings, /actuator
 │   └── hpa.yaml                     ←  Auto-scale gateway 2→6 replicas
 │
-└── docker-compose.yml               ← Removed; RabbitMQ is deployed via Kubernetes (k8s/)
+└── docker-compose.yml               ← Placeholder (all infra is deployed via Kubernetes k8s/)
 ```
 

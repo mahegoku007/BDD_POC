@@ -1,4 +1,6 @@
+com\classroom\bdd\steps\AuditStepDefinitions.class
 com\classroom\bdd\config\ScenarioContext.class
+com\classroom\bdd\steps\BatchBookingStepDefinitions.class
 com\classroom\bdd\config\TestInfrastructureConfig.class
 com\classroom\bdd\steps\ApiGatewayStepDefinitions.class
 com\classroom\bdd\config\CucumberSuite.class

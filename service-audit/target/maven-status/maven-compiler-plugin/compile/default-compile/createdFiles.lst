@@ -1,0 +1,6 @@
+com\classroom\audit\repository\AuditEventRepository.class
+com\classroom\audit\model\AuditEvent$AuditEventBuilder.class
+com\classroom\audit\AuditServiceApplication.class
+com\classroom\audit\model\AuditEvent.class
+com\classroom\audit\service\AuditService.class
+com\classroom\audit\controller\AuditController.class

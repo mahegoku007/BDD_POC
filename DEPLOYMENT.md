@@ -13,7 +13,7 @@ RabbitMQ is deployed **exclusively via Kubernetes** alongside the microservices 
 3. [Build — Maven JARs](#build--maven-jars)
 4. [Build — Docker Images](#build--docker-images)
 5. [Deploy to Rancher Desktop (Kubernetes)](#deploy-to-rancher-desktop-kubernetes)
-6. [Accessing Services (Port Forwarding)](#accessing-services-port-forwarding)
+6. [Accessing Services (LoadBalancer)](#accessing-services-loadbalancer--no-port-forwarding-needed)
 7. [Manual API Testing with curl](#manual-api-testing-with-curl)
 8. [Running Unit Tests](#running-unit-tests)
 9. [Running the Cucumber BDD Suite](#running-the-cucumber-bdd-suite)
@@ -53,6 +53,7 @@ nerdctl --namespace k8s.io build -t classroom/api-gateway:latest          ./api-
 nerdctl --namespace k8s.io build -t classroom/service-booking:latest      ./service-booking
 nerdctl --namespace k8s.io build -t classroom/service-availability:latest ./service-availability
 nerdctl --namespace k8s.io build -t classroom/service-notification:latest ./service-notification
+nerdctl --namespace k8s.io build -t classroom/service-audit:latest        ./service-audit
 
 # 3 — Deploy everything (namespace, RabbitMQ, microservices, ingress, HPA)
 kubectl apply -k k8s/
@@ -60,9 +61,13 @@ kubectl apply -k k8s/
 # 4 — Wait for all pods to be ready
 kubectl wait --for=condition=Ready pod --all -n classroom-booking --timeout=180s
 
-# 5 — Forward the API Gateway to localhost
-kubectl port-forward svc/api-gateway 9080:8080 -n classroom-booking
-# Gateway is now reachable at http://localhost:9080
+# 5 — All services are now reachable on localhost (LoadBalancer, no port-forward needed)
+#     API Gateway:    http://localhost:8080
+#     Booking:        http://localhost:8081
+#     Availability:   http://localhost:8082
+#     Notification:   http://localhost:8083
+#     Audit:          http://localhost:8084
+#     RabbitMQ AMQP:  localhost:5672
 ```
 
 ---
@@ -93,6 +98,7 @@ After a successful build, fat JARs are at:
 | service-booking | `service-booking/target/service-booking-1.0.0-SNAPSHOT.jar` |
 | service-availability | `service-availability/target/service-availability-1.0.0-SNAPSHOT.jar` |
 | service-notification | `service-notification/target/service-notification-1.0.0-SNAPSHOT.jar` |
+| service-audit | `service-audit/target/service-audit-1.0.0-SNAPSHOT.jar` |
 
 ---
 
@@ -101,11 +107,12 @@ After a successful build, fat JARs are at:
 Images must be built into the **`k8s.io` containerd namespace** so Kubernetes can find them with `imagePullPolicy: Never`.
 
 ```powershell
-# Build all four service images from the project root
+# Build all five service images from the project root
 nerdctl --namespace k8s.io build -t classroom/api-gateway:latest          ./api-gateway-camel
 nerdctl --namespace k8s.io build -t classroom/service-booking:latest      ./service-booking
 nerdctl --namespace k8s.io build -t classroom/service-availability:latest ./service-availability
 nerdctl --namespace k8s.io build -t classroom/service-notification:latest ./service-notification
+nerdctl --namespace k8s.io build -t classroom/service-audit:latest        ./service-audit
 
 # Verify images are present
 nerdctl --namespace k8s.io images | Select-String "classroom"
@@ -119,7 +126,7 @@ nerdctl --namespace k8s.io images | Select-String "classroom"
 >   [System.Text.Encoding]::ASCII)
 > ```
 
-RabbitMQ uses the public `rabbitmq:3.13-management` image — Kubernetes pulls it automatically; no manual build step needed.
+RabbitMQ uses the public `rabbitmq:3.13-management` image and MongoDB uses the public `mongo:7` image — Kubernetes pulls them automatically; no manual build step needed.
 
 ---
 
@@ -133,15 +140,19 @@ RabbitMQ uses the public `rabbitmq:3.13-management` image — Kubernetes pulls i
 |----------|------------------|
 | `namespace.yaml` | `Namespace: classroom-booking` |
 | `rabbitmq-secret.yaml` | `Secret: rabbitmq-secret` (base64 credentials) |
-| `configmap.yaml` | `ConfigMap: classroom-config` (service URLs, RabbitMQ host) |
+| `mongodb-secret.yaml` | `Secret: mongodb-secret` (MongoDB connection URI + credentials) |
+| `configmap.yaml` | `ConfigMap: classroom-config` (service URLs, RabbitMQ host, route-slip pipeline) |
 | `rabbitmq-pvc.yaml` | `PersistentVolumeClaim: rabbitmq-pvc` (2 Gi) |
 | `rabbitmq-deployment.yaml` | `Deployment: rabbitmq` (1 replica, `rabbitmq:3.13-management`) |
 | `rabbitmq-service.yaml` | `Service: rabbitmq-service` (ClusterIP :5672) + `rabbitmq-management-svc` (NodePort :30672) |
-| `service-booking.yaml` | `Deployment + Service: service-booking` (:8081) |
-| `service-availability.yaml` | `Deployment + Service: service-availability` (:8082, H2 in-memory) |
-| `service-notification.yaml` | `Deployment + Service: service-notification` (:8083) |
+| `mongodb-deployment.yaml` | `Deployment: mongodb` (1 replica, `mongo:7`) + `Service: mongodb-service` (ClusterIP :27017) |
+| `service-booking.yaml` | `Deployment + Service: service-booking` (LoadBalancer :8081) |
+| `service-availability.yaml` | `Deployment + Service: service-availability` (LoadBalancer :8082, H2 in-memory) |
+| `service-notification.yaml` | `Deployment + Service: service-notification` (LoadBalancer :8083) |
+| `service-audit-deployment.yaml` | `Deployment: service-audit` (:8084, MongoDB-backed) |
+| `service-audit-service.yaml` | `Service: service-audit` (LoadBalancer :8084) |
 | `api-gateway-deployment.yaml` | `Deployment: api-gateway` (2 replicas) |
-| `api-gateway-service.yaml` | `Service: api-gateway` (ClusterIP) + `api-gateway-lb` (LoadBalancer :80) |
+| `api-gateway-service.yaml` | `Service: api-gateway` (LoadBalancer :8080) |
 | `ingress.yaml` | `Ingress: classroom-ingress` (Traefik, routes `/bookings` and `/actuator`) |
 | `hpa.yaml` | `HorizontalPodAutoscaler: api-gateway-hpa` (min 2 / max 6 replicas) |
 
@@ -160,7 +171,9 @@ Expected steady state:
 NAME                                    READY   STATUS    RESTARTS
 api-gateway-xxxxx                       1/1     Running   0
 api-gateway-xxxxx                       1/1     Running   0
+mongodb-xxxxx                           1/1     Running   0
 rabbitmq-xxxxx                          1/1     Running   0
+service-audit-xxxxx                     1/1     Running   0
 service-availability-xxxxx              1/1     Running   0
 service-booking-xxxxx                   1/1     Running   0
 service-notification-xxxxx              1/1     Running   0
@@ -179,12 +192,14 @@ nerdctl --namespace k8s.io build -t classroom/api-gateway:latest          ./api-
 nerdctl --namespace k8s.io build -t classroom/service-booking:latest      ./service-booking
 nerdctl --namespace k8s.io build -t classroom/service-availability:latest ./service-availability
 nerdctl --namespace k8s.io build -t classroom/service-notification:latest ./service-notification
+nerdctl --namespace k8s.io build -t classroom/service-audit:latest        ./service-audit
 
 # 3 — Rolling restart to pick up new images
 kubectl rollout restart deployment/api-gateway \
                           deployment/service-booking \
                           deployment/service-availability \
                           deployment/service-notification \
+                          deployment/service-audit \
                           -n classroom-booking
 
 # 4 — Wait for completion
@@ -192,6 +207,7 @@ kubectl rollout status deployment/api-gateway \
                         deployment/service-booking \
                         deployment/service-availability \
                         deployment/service-notification \
+                        deployment/service-audit \
                         -n classroom-booking --timeout=120s
 ```
 
@@ -220,41 +236,51 @@ kubectl get configmap classroom-config -n classroom-booking -o yaml
 
 ---
 
-## Accessing Services (Port Forwarding)
+## Accessing Services (LoadBalancer — No Port Forwarding Needed)
 
-All services use `ClusterIP` internally. Use `kubectl port-forward` to reach them from your host machine. Run each forward in a **dedicated terminal** (it blocks while active).
+All services are exposed as `type: LoadBalancer`. On Rancher Desktop, each LoadBalancer service is automatically bound to **localhost** on its configured port — no `kubectl port-forward` required.
 
-### Full port-forward reference
+### Service endpoints (available immediately after deploy)
+
+| Service | URL | Purpose |
+|---------|-----|---------|
+| API Gateway | `http://localhost:8080` | Main entry point for bookings |
+| Booking Service | `http://localhost:8081` | Internal booking CRUD |
+| Availability Service | `http://localhost:8082` | Slot availability checks |
+| Notification Service | `http://localhost:8083` | Notification log & test endpoints |
+| Audit Service | `http://localhost:8084` | Audit trail (MongoDB-backed) |
+| RabbitMQ AMQP | `localhost:5672` | Messaging (used by BDD tests) |
+| RabbitMQ Management UI | `http://localhost:30672` | Web UI (NodePort, guest/guest) |
+| Ingress (Traefik) | `http://localhost/bookings` | Alternative access via port 80 |
+
+### Verify connectivity
 
 ```powershell
-# RabbitMQ — AMQP  (required by the BDD test suite)
-kubectl port-forward svc/rabbitmq-service         5672:5672   -n classroom-booking
-
-# RabbitMQ — Management UI  →  http://localhost:15672  (guest / guest)
-kubectl port-forward svc/rabbitmq-management-svc  15672:15672 -n classroom-booking
-
-# API Gateway  →  http://localhost:9080/bookings
-kubectl port-forward svc/api-gateway              9080:8080   -n classroom-booking
-
-# Booking Service  (internal / debugging)
-kubectl port-forward svc/service-booking          9081:8081   -n classroom-booking
-
-# Availability Service  (test endpoints at /test/*)
-kubectl port-forward svc/service-availability     9082:8082   -n classroom-booking
-
-# Notification Service  (test endpoints at /test/*)
-kubectl port-forward svc/service-notification     9083:8083   -n classroom-booking
+# Quick health check — all services
+curl.exe -s http://localhost:8080/actuator/health
+curl.exe -s http://localhost:8081/actuator/health
+curl.exe -s http://localhost:8082/actuator/health
+curl.exe -s http://localhost:8083/actuator/health
+curl.exe -s http://localhost:8084/actuator/health
 ```
 
-> **PowerShell note:** `curl` is an alias for `Invoke-WebRequest`. Always use `curl.exe` to call the real curl binary.
+> **Note:** If a port is already in use by another process on the host, the LoadBalancer binding will fail silently. Use `netstat -ano | findstr ":<port>"` to check and free the port.
 
-> **Port-forward drops on rollout restart:** The tunnel is tied to a specific pod. After `kubectl rollout restart`, once the pods are `Running` again, start a new port-forward.
+> **Fallback — Port Forwarding:** If LoadBalancer doesn't work (e.g., non-Rancher Desktop clusters), you can still use manual port-forwards:
+> ```powershell
+> kubectl port-forward svc/api-gateway          8080:8080 -n classroom-booking
+> kubectl port-forward svc/service-booking      8081:8081 -n classroom-booking
+> kubectl port-forward svc/service-availability 8082:8082 -n classroom-booking
+> kubectl port-forward svc/service-notification 8083:8083 -n classroom-booking
+> kubectl port-forward svc/service-audit        8084:8084 -n classroom-booking
+> kubectl port-forward svc/rabbitmq-service     5672:5672 -n classroom-booking
+> ```
 
 ---
 
 ## Manual API Testing with curl
 
-All examples assume the API Gateway is port-forwarded to `localhost:9080`.
+All examples assume the API Gateway is reachable at `localhost:8080` (LoadBalancer, no port-forward needed).
 
 ### Helper function (avoids PowerShell BOM / escaping issues)
 
@@ -264,7 +290,7 @@ function Post-Booking($json) {
         "$env:TEMP\booking.json", $json,
         (New-Object System.Text.UTF8Encoding $false))
     curl.exe -s -o "$env:TEMP\resp.json" -w "HTTP %{http_code}`n" `
-        -X POST http://localhost:9080/bookings `
+        -X POST http://localhost:8080/bookings `
         -H "Content-Type: application/json" `
         --data-binary "@$env:TEMP\booking.json"
     Get-Content "$env:TEMP\resp.json"
@@ -274,7 +300,7 @@ function Post-Booking($json) {
 ### Health check
 
 ```powershell
-curl.exe -s http://localhost:9080/actuator/health
+curl.exe -s http://localhost:8080/actuator/health
 # {"status":"UP","components":{"rabbit":{"status":"UP"},...}}
 ```
 
@@ -333,9 +359,9 @@ Post-Booking '{"classroomId":"CR-101","date":"01-07-2026","timeSlot":{"startTime
 ### Verify async results via notification service
 
 ```powershell
-# Requires: kubectl port-forward svc/service-notification 9083:8083 -n classroom-booking
+# Notification service is directly accessible via LoadBalancer on port 8083
 
-curl.exe -s http://localhost:9083/test/notifications/summary
+curl.exe -s http://localhost:8083/test/notifications/summary
 # {"total":N,"confirmations":X,"rejections":Y}
 
 curl.exe -s http://localhost:9083/test/notifications
@@ -371,7 +397,7 @@ Reports at `<module>/target/surefire-reports/`.
 
 ## Running the Cucumber BDD Suite
 
-The BDD suite makes **live HTTP and AMQP calls**. All services and RabbitMQ must be running and port-forwarded before invoking Maven.
+The BDD suite makes **live HTTP and AMQP calls**. All services must be running in Kubernetes. Since all services use `type: LoadBalancer`, they are directly accessible on localhost — **no port forwarding required**.
 
 ### Step 1 — Deploy (if not already running)
 
@@ -380,35 +406,14 @@ kubectl apply -k k8s/
 kubectl wait --for=condition=Ready pod --all -n classroom-booking --timeout=180s
 ```
 
-### Step 2 — Forward all required ports
-
-Open **five separate terminals** and start a port-forward in each:
+### Step 2 — Run the suite
 
 ```powershell
-# Terminal 1 — RabbitMQ AMQP  (required by messaging step definitions)
-kubectl port-forward svc/rabbitmq-service       5672:5672   -n classroom-booking
-
-# Terminal 2 — API Gateway
-kubectl port-forward svc/api-gateway            8080:8080   -n classroom-booking
-
-# Terminal 3 — Booking Service
-kubectl port-forward svc/service-booking        8081:8081   -n classroom-booking
-
-# Terminal 4 — Availability Service
-kubectl port-forward svc/service-availability   8082:8082   -n classroom-booking
-
-# Terminal 5 — Notification Service
-kubectl port-forward svc/service-notification   8083:8083   -n classroom-booking
-```
-
-> The test profile (`application-test.yml`) expects every service at its **default port on localhost**.
-
-### Step 3 — Run the suite
-
-```powershell
-# In a sixth terminal, from the project root:
+# From the project root:
 mvn test -pl integration-tests
 ```
+
+> **No port-forwarding step!** LoadBalancer services bind directly to localhost on ports 8080–8084 and 5672.
 
 ### Filtering by tag
 
@@ -555,7 +560,7 @@ Spring AMQP will retry automatically once RabbitMQ is ready — no restart neede
 Always use the actual curl binary, not the PowerShell alias:
 
 ```powershell
-curl.exe -s http://localhost:9080/actuator/health
+curl.exe -s http://localhost:8080/actuator/health
 ```
 
 ### JSON body errors in PowerShell
@@ -565,37 +570,41 @@ Write to a temp file to avoid BOM and quote-escaping issues:
 ```powershell
 $json = '{"classroomId":"CR-101","date":"2026-07-01","timeSlot":{"startTime":"09:00","endTime":"10:00"},"requestedBy":"alice@example.com"}'
 [System.IO.File]::WriteAllText("$env:TEMP\b.json", $json, (New-Object System.Text.UTF8Encoding $false))
-curl.exe -s -X POST http://localhost:9080/bookings -H "Content-Type: application/json" --data-binary "@$env:TEMP\b.json"
+curl.exe -s -X POST http://localhost:8080/bookings -H "Content-Type: application/json" --data-binary "@$env:TEMP\b.json"
 ```
 
-### Port already in use
+### Port already in use (LoadBalancer binding fails)
 
 ```powershell
+# Find what's using the port
 netstat -ano | findstr ":8080"
 
-# Use an alternate local port
-kubectl port-forward svc/api-gateway 9080:8080 -n classroom-booking
-# Then curl to http://localhost:9080
+# Kill the process or stop the conflicting application, then re-apply:
+kubectl delete svc api-gateway -n classroom-booking
+kubectl apply -k k8s/
 ```
 
-### Port-forward drops after `kubectl rollout restart`
+### Services unreachable after `kubectl rollout restart`
 
-Tunnels are tied to individual pods. After the rollout completes, restart the forward:
+LoadBalancer bindings persist across rollouts (they're tied to the Service, not the Pod). If a service is briefly unavailable during restart, wait for the new pods:
 
 ```powershell
 kubectl rollout status deployment/api-gateway -n classroom-booking --timeout=120s
-kubectl port-forward svc/api-gateway 9080:8080 -n classroom-booking
 ```
 
 ### BDD tests fail with `Connection refused` on port 5672
 
-The test profile expects RabbitMQ at `localhost:5672`. Start the port-forward before running the suite:
+The test profile expects RabbitMQ at `localhost:5672` via LoadBalancer. Verify the service has an external IP:
 
 ```powershell
-kubectl port-forward svc/rabbitmq-service 5672:5672 -n classroom-booking
+kubectl get svc rabbitmq-service -n classroom-booking
+# EXTERNAL-IP should show an IP (e.g., 192.168.127.2), not <pending>
 
-# Verify
-curl.exe -s -u guest:guest http://localhost:15672/api/overview | Select-String "rabbitmq_version"
+# If still failing, check if another process holds port 5672:
+netstat -ano | findstr ":5672"
+
+# Fallback — manual port-forward:
+kubectl port-forward svc/rabbitmq-service 5672:5672 -n classroom-booking
 ```
 
 ### Invalid date format

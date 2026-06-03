@@ -1,7 +1,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # Shared ConfigMap
 # Contains non-sensitive configuration consumed by all microservices.
-# Sensitive values (credentials) live in rabbitmq-secret.
+# Sensitive values (credentials) live in rabbitmq-secret / mongodb-secret.
 # ─────────────────────────────────────────────────────────────────────────────
 apiVersion: v1
 kind: ConfigMap
@@ -19,6 +19,12 @@ data:
   BOOKING_SERVICE_URL: "http://service-booking:8081"
   AVAILABILITY_SERVICE_URL: "http://service-availability:8082"
   NOTIFICATION_SERVICE_URL: "http://service-notification:8083"
+  AUDIT_SERVICE_URL: "http://service-audit:8084"
+
+  # Route Slip pipeline — comma-separated list of Camel direct: endpoints.
+  # The API Gateway processes each booking through these steps in order.
+  # Change this value and restart the gateway pod to alter the pipeline.
+  ROUTE_SLIP_PIPELINE: "direct:submitBooking,direct:audit"
 
   # Spring profile active in cluster
   SPRING_PROFILES_ACTIVE: "prod"
@@ -26,4 +32,3 @@ data:
   # Log level
   LOG_LEVEL_ROOT: "INFO"
   LOG_LEVEL_CLASSROOM: "DEBUG"
-

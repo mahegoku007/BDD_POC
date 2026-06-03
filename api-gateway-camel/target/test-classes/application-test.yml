@@ -1,21 +1,30 @@
 # ── Test profile for api-gateway-camel ────────────────────────────────────
 # Activated by @ActiveProfiles("test").
 # - Disables RabbitMQ auto-configuration (no broker needed for route unit tests)
-# - Points booking service URL at a placeholder (AdviceWith replaces it in tests)
 spring:
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
 
-# Booking service URL is overridden by AdviceWith in tests;
-# this value must be parseable but won't actually be called.
+# Downstream service URLs (not called in unit tests — XML routes disabled)
 services:
   booking:
     url: http://localhost:9999
+  audit:
+    url: http://localhost:9998
+
+# Route Slip for tests — skip audit, just submit
+gateway:
+  route-slip: direct:submitBooking
+
+# Disable XML route loading for unit tests to avoid HTTP connection issues.
+# Use classpath pattern that matches nothing.
+camel:
+  springboot:
+    routes-include-pattern: "classpath:no-routes-in-test/*.xml"
 
 logging:
   level:
     root: WARN
     com.classroom.gateway: DEBUG
     org.apache.camel: WARN
-

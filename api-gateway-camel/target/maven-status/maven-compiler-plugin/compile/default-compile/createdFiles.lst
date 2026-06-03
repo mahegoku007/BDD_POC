@@ -1,4 +1,11 @@
-com\classroom\gateway\ApiGatewayCamelApplication.class
 com\classroom\gateway\route\BookingRoute.class
-com\classroom\gateway\config\JacksonConfig.class
+com\classroom\gateway\processor\BatchCompletionProcessor.class
+com\classroom\gateway\processor\BookingSerializerProcessor.class
 com\classroom\gateway\exception\UnsupportedMediaTypeException.class
+com\classroom\gateway\processor\AuditBodyRestorerProcessor.class
+com\classroom\gateway\processor\TimeSlotValidatorProcessor.class
+com\classroom\gateway\ApiGatewayCamelApplication.class
+com\classroom\gateway\processor\ContentTypeValidatorProcessor.class
+com\classroom\gateway\config\JacksonConfig.class
+com\classroom\gateway\processor\BatchBookingAggregationStrategy.class
+com\classroom\gateway\processor\BookingDeserializerProcessor.class

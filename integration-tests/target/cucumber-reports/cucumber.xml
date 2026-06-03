@@ -1,0 +1,660 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Cucumber" time="122.393" tests="65" skipped="0" failures="0" errors="0">
+<testcase classname="API Gateway - Booking REST Endpoint" name="Valid booking request returns 202 Accepted" time="0.465">
+<system-out><![CDATA[
+Given the API gateway is running on port "8080".............................passed
+And the endpoint "POST /bookings" is available..............................passed
+When I send a POST request to "/bookings" with body:........................passed
+Then the HTTP response status should be "202"...............................passed
+And the response body should contain field "bookingId"......................passed
+And the response body should contain field "status" with value "PENDING"....passed
+]]></system-out>
+</testcase>
+<testcase classname="API Gateway - Booking REST Endpoint" name="Booking request is forwarded to booking.requested queue" time="3.753">
+<system-out><![CDATA[
+Given the API gateway is running on port "8080".............................passed
+And the endpoint "POST /bookings" is available..............................passed
+When I send a POST request to "/bookings" with body:........................passed
+Then the HTTP response status should be "202"...............................passed
+And an event should be published to the "booking.requested" queue...........passed
+]]></system-out>
+</testcase>
+<testcase classname="API Gateway - Booking REST Endpoint" name="Missing classroomId returns 400 Bad Request" time="0.067">
+<system-out><![CDATA[
+Given the API gateway is running on port "8080".............................passed
+And the endpoint "POST /bookings" is available..............................passed
+When I send a POST request to "/bookings" with body:........................passed
+Then the HTTP response status should be "400"...............................passed
+And the response body should contain field "error"..........................passed
+]]></system-out>
+</testcase>
+<testcase classname="API Gateway - Booking REST Endpoint" name="Missing date returns 400 Bad Request" time="0.069">
+<system-out><![CDATA[
+Given the API gateway is running on port "8080".............................passed
+And the endpoint "POST /bookings" is available..............................passed
+When I send a POST request to "/bookings" with body:........................passed
+Then the HTTP response status should be "400"...............................passed
+]]></system-out>
+</testcase>
+<testcase classname="API Gateway - Booking REST Endpoint" name="Missing requestedBy returns 400 Bad Request" time="0.057">
+<system-out><![CDATA[
+Given the API gateway is running on port "8080".............................passed
+And the endpoint "POST /bookings" is available..............................passed
+When I send a POST request to "/bookings" with body:........................passed
+Then the HTTP response status should be "400"...............................passed
+]]></system-out>
+</testcase>
+<testcase classname="API Gateway - Booking REST Endpoint" name="Invalid date format returns 400 Bad Request" time="0.057">
+<system-out><![CDATA[
+Given the API gateway is running on port "8080".............................passed
+And the endpoint "POST /bookings" is available..............................passed
+When I send a POST request to "/bookings" with body:........................passed
+Then the HTTP response status should be "400"...............................passed
+]]></system-out>
+</testcase>
+<testcase classname="API Gateway - Booking REST Endpoint" name="End time before start time returns 400 Bad Request" time="0.094">
+<system-out><![CDATA[
+Given the API gateway is running on port "8080".............................passed
+And the endpoint "POST /bookings" is available..............................passed
+When I send a POST request to "/bookings" with body:........................passed
+Then the HTTP response status should be "400"...............................passed
+And the response body should contain "endTime must be after startTime"......passed
+]]></system-out>
+</testcase>
+<testcase classname="API Gateway - Booking REST Endpoint" name="Empty request body returns 400 Bad Request" time="0.062">
+<system-out><![CDATA[
+Given the API gateway is running on port "8080".............................passed
+And the endpoint "POST /bookings" is available..............................passed
+When I send a POST request to "/bookings" with an empty body................passed
+Then the HTTP response status should be "400"...............................passed
+]]></system-out>
+</testcase>
+<testcase classname="API Gateway - Booking REST Endpoint" name="Request with non-JSON content type returns 415 Unsupported Media Type" time="0.052">
+<system-out><![CDATA[
+Given the API gateway is running on port "8080".............................passed
+And the endpoint "POST /bookings" is available..............................passed
+When I send a POST request to "/bookings" with content type "text/plain" and body "classroomId=CR-101".passed
+Then the HTTP response status should be "415"...............................passed
+]]></system-out>
+</testcase>
+<testcase classname="API Gateway - Booking REST Endpoint" name="Camel route logs incoming booking request" time="0.066">
+<system-out><![CDATA[
+Given the API gateway is running on port "8080".............................passed
+And the endpoint "POST /bookings" is available..............................passed
+When I send a POST request to "/bookings" with body:........................passed
+Then the Camel route log should contain "Received booking request for classroom CR-103".passed
+]]></system-out>
+</testcase>
+<testcase classname="API Gateway - Booking REST Endpoint" name="Health endpoint returns 200 OK" time="0.059">
+<system-out><![CDATA[
+Given the API gateway is running on port "8080".............................passed
+And the endpoint "POST /bookings" is available..............................passed
+When I send a GET request to "/actuator/health".............................passed
+Then the HTTP response status should be "200"...............................passed
+And the response body should contain field "status" with value "UP".........passed
+]]></system-out>
+</testcase>
+<testcase classname="Audit Logging - Booking Audit Trail via MongoDB" name="Booking creation produces a CREATED audit event" time="1.639">
+<system-out><![CDATA[
+Given the API gateway is running on port "8080".............................passed
+And the audit service is running on port "8084".............................passed
+When I send a POST request to "/bookings" with body:........................passed
+Then the HTTP response status should be "202"...............................passed
+And the response body should contain field "bookingId"......................passed
+When I query the audit trail for the last booking...........................passed
+Then the audit trail should contain an event with action "CREATED"..........passed
+And the audit event should have source "api-gateway"........................passed
+And the audit event payload should contain "CR-AUDIT-101"...................passed
+]]></system-out>
+</testcase>
+<testcase classname="Audit Logging - Booking Audit Trail via MongoDB" name="Audit trail returns events in chronological order" time="1.575">
+<system-out><![CDATA[
+Given the API gateway is running on port "8080".............................passed
+And the audit service is running on port "8084".............................passed
+When I send a POST request to "/bookings" with body:........................passed
+Then the HTTP response status should be "202"...............................passed
+When I query the audit trail for the last booking...........................passed
+Then the audit trail should have at least 1 event...........................passed
+And the first audit event should have action "CREATED"......................passed
+]]></system-out>
+</testcase>
+<testcase classname="Audit Logging - Booking Audit Trail via MongoDB" name="Audit endpoint returns 404 for unknown booking ID" time="1.561">
+<system-out><![CDATA[
+Given the API gateway is running on port "8080".............................passed
+And the audit service is running on port "8084".............................passed
+When I query the audit trail for booking "BK-NONEXISTENT"...................passed
+Then the audit HTTP response status should be "404".........................passed
+]]></system-out>
+</testcase>
+<testcase classname="Audit Logging - Booking Audit Trail via MongoDB" name="Audit events can be queried by classroom ID" time="0.073">
+<system-out><![CDATA[
+Given the API gateway is running on port "8080".............................passed
+And the audit service is running on port "8084".............................passed
+When I send a POST request to "/bookings" with body:........................passed
+Then the HTTP response status should be "202"...............................passed
+When I query audit events for classroom "CR-AUDIT-200"......................passed
+Then the classroom audit trail should not be empty..........................passed
+]]></system-out>
+</testcase>
+<testcase classname="Classroom Availability Check" name="Classroom is available when no bookings exist" time="0.107">
+<system-out><![CDATA[
+Given the availability service is running...................................passed
+And the in-memory booking store is empty....................................passed
+When the availability service checks classroom "CR-101" on "2026-06-01" from "09:00" to "10:00".passed
+Then the availability status should be "AVAILABLE"..........................passed
+]]></system-out>
+</testcase>
+<testcase classname="Classroom Availability Check" name="Classroom is unavailable for an exact duplicate slot" time="0.053">
+<system-out><![CDATA[
+Given the availability service is running...................................passed
+And the in-memory booking store is empty....................................passed
+Given a booking already exists for classroom "CR-101" on "2026-06-01" from "09:00" to "10:00".passed
+When the availability service checks classroom "CR-101" on "2026-06-01" from "09:00" to "10:00".passed
+Then the availability status should be "UNAVAILABLE"........................passed
+And the conflict details should include the existing booking time "09:00 - 10:00".passed
+]]></system-out>
+</testcase>
+<testcase classname="Classroom Availability Check" name="Classroom is unavailable when new slot overlaps start of existing booking" time="0.055">
+<system-out><![CDATA[
+Given the availability service is running...................................passed
+And the in-memory booking store is empty....................................passed
+Given a booking already exists for classroom "CR-102" on "2026-06-02" from "10:00" to "11:00".passed
+When the availability service checks classroom "CR-102" on "2026-06-02" from "09:30" to "10:30".passed
+Then the availability status should be "UNAVAILABLE"........................passed
+]]></system-out>
+</testcase>
+<testcase classname="Classroom Availability Check" name="Classroom is unavailable when new slot overlaps end of existing booking" time="0.055">
+<system-out><![CDATA[
+Given the availability service is running...................................passed
+And the in-memory booking store is empty....................................passed
+Given a booking already exists for classroom "CR-103" on "2026-06-03" from "14:00" to "15:00".passed
+When the availability service checks classroom "CR-103" on "2026-06-03" from "14:30" to "15:30".passed
+Then the availability status should be "UNAVAILABLE"........................passed
+]]></system-out>
+</testcase>
+<testcase classname="Classroom Availability Check" name="Classroom is unavailable when new slot is contained within existing booking" time="0.055">
+<system-out><![CDATA[
+Given the availability service is running...................................passed
+And the in-memory booking store is empty....................................passed
+Given a booking already exists for classroom "CR-101" on "2026-06-04" from "08:00" to "12:00".passed
+When the availability service checks classroom "CR-101" on "2026-06-04" from "09:00" to "10:00".passed
+Then the availability status should be "UNAVAILABLE"........................passed
+]]></system-out>
+</testcase>
+<testcase classname="Classroom Availability Check" name="Classroom is unavailable when new slot completely wraps an existing booking" time="0.056">
+<system-out><![CDATA[
+Given the availability service is running...................................passed
+And the in-memory booking store is empty....................................passed
+Given a booking already exists for classroom "CR-102" on "2026-06-05" from "10:00" to "11:00".passed
+When the availability service checks classroom "CR-102" on "2026-06-05" from "09:00" to "12:00".passed
+Then the availability status should be "UNAVAILABLE"........................passed
+]]></system-out>
+</testcase>
+<testcase classname="Classroom Availability Check" name="Classroom is available when new slot starts exactly at end of existing booking" time="0.054">
+<system-out><![CDATA[
+Given the availability service is running...................................passed
+And the in-memory booking store is empty....................................passed
+Given a booking already exists for classroom "CR-101" on "2026-06-06" from "09:00" to "10:00".passed
+When the availability service checks classroom "CR-101" on "2026-06-06" from "10:00" to "11:00".passed
+Then the availability status should be "AVAILABLE"..........................passed
+]]></system-out>
+</testcase>
+<testcase classname="Classroom Availability Check" name="Classroom is available when new slot ends exactly at start of existing booking" time="0.051">
+<system-out><![CDATA[
+Given the availability service is running...................................passed
+And the in-memory booking store is empty....................................passed
+Given a booking already exists for classroom "CR-101" on "2026-06-07" from "11:00" to "12:00".passed
+When the availability service checks classroom "CR-101" on "2026-06-07" from "10:00" to "11:00".passed
+Then the availability status should be "AVAILABLE"..........................passed
+]]></system-out>
+</testcase>
+<testcase classname="Classroom Availability Check" name="Classroom is available in a free gap between two existing bookings" time="0.07">
+<system-out><![CDATA[
+Given the availability service is running...................................passed
+And the in-memory booking store is empty....................................passed
+Given the following bookings exist for classroom "CR-103":..................passed
+When the availability service checks classroom "CR-103" on "2026-06-08" from "09:00" to "11:00".passed
+Then the availability status should be "AVAILABLE"..........................passed
+]]></system-out>
+</testcase>
+<testcase classname="Classroom Availability Check" name="Classroom is unavailable when slot conflicts with one of many existing bookings" time="0.089">
+<system-out><![CDATA[
+Given the availability service is running...................................passed
+And the in-memory booking store is empty....................................passed
+Given the following bookings exist for classroom "CR-103":..................passed
+When the availability service checks classroom "CR-103" on "2026-06-09" from "10:30" to "11:30".passed
+Then the availability status should be "UNAVAILABLE"........................passed
+]]></system-out>
+</testcase>
+<testcase classname="Classroom Availability Check" name="Booking on a different date does not affect availability on another date" time="0.054">
+<system-out><![CDATA[
+Given the availability service is running...................................passed
+And the in-memory booking store is empty....................................passed
+Given a booking already exists for classroom "CR-101" on "2026-06-10" from "09:00" to "10:00".passed
+When the availability service checks classroom "CR-101" on "2026-06-11" from "09:00" to "10:00".passed
+Then the availability status should be "AVAILABLE"..........................passed
+]]></system-out>
+</testcase>
+<testcase classname="Batch Booking - Split and Aggregate Pattern" name="Batch of 3 valid bookings returns array of 3 acceptances" time="0.099">
+<system-out><![CDATA[
+Given the API gateway is running on port "8080".............................passed
+And the endpoint "POST /bookings/batch" is available........................passed
+When I send a POST request to "/bookings/batch" with body:..................passed
+Then the HTTP response status should be "200"...............................passed
+And the response body should be a JSON array of size 3......................passed
+And each item in the batch response should contain field "bookingId"........passed
+]]></system-out>
+</testcase>
+<testcase classname="Batch Booking - Split and Aggregate Pattern" name="Batch with one invalid booking returns mixed results" time="0.237">
+<system-out><![CDATA[
+Given the API gateway is running on port "8080".............................passed
+And the endpoint "POST /bookings/batch" is available........................passed
+When I send a POST request to "/bookings/batch" with body:..................passed
+Then the HTTP response status should be "200"...............................passed
+And the response body should be a JSON array of size 2......................passed
+And the batch response should contain at least one error item...............passed
+]]></system-out>
+</testcase>
+<testcase classname="Batch Booking - Split and Aggregate Pattern" name="Batch with single item works like single booking" time="0.06">
+<system-out><![CDATA[
+Given the API gateway is running on port "8080".............................passed
+And the endpoint "POST /bookings/batch" is available........................passed
+When I send a POST request to "/bookings/batch" with body:..................passed
+Then the HTTP response status should be "200"...............................passed
+And the response body should be a JSON array of size 1......................passed
+And each item in the batch response should contain field "bookingId"........passed
+]]></system-out>
+</testcase>
+<testcase classname="Classroom Booking" name="Successful booking when classroom is available" time="3.11">
+<system-out><![CDATA[
+Given the booking system is up and running..................................passed
+And the following classrooms exist:.........................................passed
+Given classroom "CR-101" is available on "2026-06-01" from "09:00" to "10:00".passed
+When user "alice@example.com" books classroom "CR-101" on "2026-06-01" from "09:00" to "10:00".passed
+Then the booking status should be "CONFIRMED"...............................passed
+And a confirmation notification should be sent to "alice@example.com".......passed
+And the event "booking.confirmed" should be published to RabbitMQ...........passed
+]]></system-out>
+</testcase>
+<testcase classname="Classroom Booking" name="Successful booking for a different time slot on the same day" time="2.101">
+<system-out><![CDATA[
+Given the booking system is up and running..................................passed
+And the following classrooms exist:.........................................passed
+Given classroom "CR-102" has an existing booking on "2026-06-02" from "08:00" to "09:00".passed
+And classroom "CR-102" is available on "2026-06-02" from "10:00" to "11:00".passed
+When user "bob@example.com" books classroom "CR-102" on "2026-06-02" from "10:00" to "11:00".passed
+Then the booking status should be "CONFIRMED"...............................passed
+And a confirmation notification should be sent to "bob@example.com".........passed
+]]></system-out>
+</testcase>
+<testcase classname="Classroom Booking" name="Successful booking for a different classroom at the same time" time="2.11">
+<system-out><![CDATA[
+Given the booking system is up and running..................................passed
+And the following classrooms exist:.........................................passed
+Given classroom "CR-101" has an existing booking on "2026-06-03" from "14:00" to "15:00".passed
+And classroom "CR-102" is available on "2026-06-03" from "14:00" to "15:00".passed
+When user "carol@example.com" books classroom "CR-102" on "2026-06-03" from "14:00" to "15:00".passed
+Then the booking status should be "CONFIRMED"...............................passed
+And a confirmation notification should be sent to "carol@example.com".......passed
+]]></system-out>
+</testcase>
+<testcase classname="Classroom Booking" name="Booking rejected when classroom is already booked at the exact same time" time="4.113">
+<system-out><![CDATA[
+Given the booking system is up and running..................................passed
+And the following classrooms exist:.........................................passed
+Given classroom "CR-101" has an existing booking on "2026-06-04" from "11:00" to "12:00".passed
+When user "dave@example.com" tries to book classroom "CR-101" on "2026-06-04" from "11:00" to "12:00".passed
+Then the booking status should be "REJECTED"................................passed
+And the rejection reason should be "Time slot is already booked"............passed
+And a rejection notification should be sent to "dave@example.com"...........passed
+And the event "booking.rejected" should be published to RabbitMQ............passed
+]]></system-out>
+</testcase>
+<testcase classname="Classroom Booking" name="Booking rejected when requested time overlaps the start of an existing booking" time="2.095">
+<system-out><![CDATA[
+Given the booking system is up and running..................................passed
+And the following classrooms exist:.........................................passed
+Given classroom "CR-102" has an existing booking on "2026-06-05" from "13:00" to "14:00".passed
+When user "eve@example.com" tries to book classroom "CR-102" on "2026-06-05" from "12:30" to "13:30".passed
+Then the booking status should be "REJECTED"................................passed
+And the rejection reason should be "Time slot is already booked"............passed
+]]></system-out>
+</testcase>
+<testcase classname="Classroom Booking" name="Booking rejected when requested time overlaps the end of an existing booking" time="2.098">
+<system-out><![CDATA[
+Given the booking system is up and running..................................passed
+And the following classrooms exist:.........................................passed
+Given classroom "CR-103" has an existing booking on "2026-06-06" from "15:00" to "16:00".passed
+When user "frank@example.com" tries to book classroom "CR-103" on "2026-06-06" from "15:30" to "16:30".passed
+Then the booking status should be "REJECTED"................................passed
+And the rejection reason should be "Time slot is already booked"............passed
+]]></system-out>
+</testcase>
+<testcase classname="Classroom Booking" name="Booking rejected when requested time is completely within an existing booking" time="2.104">
+<system-out><![CDATA[
+Given the booking system is up and running..................................passed
+And the following classrooms exist:.........................................passed
+Given classroom "CR-101" has an existing booking on "2026-06-07" from "09:00" to "12:00".passed
+When user "grace@example.com" tries to book classroom "CR-101" on "2026-06-07" from "10:00" to "11:00".passed
+Then the booking status should be "REJECTED"................................passed
+And the rejection reason should be "Time slot is already booked"............passed
+]]></system-out>
+</testcase>
+<testcase classname="Classroom Booking" name="Booking rejected when requested time completely encompasses an existing booking" time="2.093">
+<system-out><![CDATA[
+Given the booking system is up and running..................................passed
+And the following classrooms exist:.........................................passed
+Given classroom "CR-102" has an existing booking on "2026-06-08" from "10:00" to "11:00".passed
+When user "henry@example.com" tries to book classroom "CR-102" on "2026-06-08" from "09:00" to "12:00".passed
+Then the booking status should be "REJECTED"................................passed
+And the rejection reason should be "Time slot is already booked"............passed
+]]></system-out>
+</testcase>
+<testcase classname="Classroom Booking" name="Booking allowed when new slot starts exactly when previous booking ends" time="1.083">
+<system-out><![CDATA[
+Given the booking system is up and running..................................passed
+And the following classrooms exist:.........................................passed
+Given classroom "CR-101" has an existing booking on "2026-06-09" from "09:00" to "10:00".passed
+When user "iris@example.com" books classroom "CR-101" on "2026-06-09" from "10:00" to "11:00".passed
+Then the booking status should be "CONFIRMED"...............................passed
+]]></system-out>
+</testcase>
+<testcase classname="Classroom Booking" name="Booking allowed when new slot ends exactly when next booking starts" time="1.103">
+<system-out><![CDATA[
+Given the booking system is up and running..................................passed
+And the following classrooms exist:.........................................passed
+Given classroom "CR-102" has an existing booking on "2026-06-10" from "11:00" to "12:00".passed
+When user "jack@example.com" books classroom "CR-102" on "2026-06-10" from "10:00" to "11:00".passed
+Then the booking status should be "CONFIRMED"...............................passed
+]]></system-out>
+</testcase>
+<testcase classname="Classroom Booking" name="Booking outcome depends on classroom availability - #1.1" time="1.068">
+<system-out><![CDATA[
+Given the booking system is up and running..................................passed
+And the following classrooms exist:.........................................passed
+Given classroom "CR-101" availability status is "AVAILABLE" on "2026-07-01" from "08:00" to "09:00".passed
+When user "user1@example.com" requests to book classroom "CR-101" on "2026-07-01" from "08:00" to "09:00".passed
+Then the booking status should be "CONFIRMED"...............................passed
+]]></system-out>
+</testcase>
+<testcase classname="Classroom Booking" name="Booking outcome depends on classroom availability - #1.2" time="1.087">
+<system-out><![CDATA[
+Given the booking system is up and running..................................passed
+And the following classrooms exist:.........................................passed
+Given classroom "CR-102" availability status is "UNAVAILABLE" on "2026-07-01" from "08:00" to "09:00".passed
+When user "user2@example.com" requests to book classroom "CR-102" on "2026-07-01" from "08:00" to "09:00".passed
+Then the booking status should be "REJECTED"................................passed
+]]></system-out>
+</testcase>
+<testcase classname="Classroom Booking" name="Booking outcome depends on classroom availability - #1.3" time="1.089">
+<system-out><![CDATA[
+Given the booking system is up and running..................................passed
+And the following classrooms exist:.........................................passed
+Given classroom "CR-103" availability status is "AVAILABLE" on "2026-07-02" from "13:00" to "14:00".passed
+When user "user3@example.com" requests to book classroom "CR-103" on "2026-07-02" from "13:00" to "14:00".passed
+Then the booking status should be "CONFIRMED"...............................passed
+]]></system-out>
+</testcase>
+<testcase classname="Classroom Booking" name="Booking outcome depends on classroom availability - #1.4" time="1.081">
+<system-out><![CDATA[
+Given the booking system is up and running..................................passed
+And the following classrooms exist:.........................................passed
+Given classroom "CR-101" availability status is "UNAVAILABLE" on "2026-07-03" from "16:00" to "17:00".passed
+When user "user4@example.com" requests to book classroom "CR-101" on "2026-07-03" from "16:00" to "17:00".passed
+Then the booking status should be "REJECTED"................................passed
+]]></system-out>
+</testcase>
+<testcase classname="Classroom Booking" name="Booking outcome depends on classroom availability - #1.5" time="1.062">
+<system-out><![CDATA[
+Given the booking system is up and running..................................passed
+And the following classrooms exist:.........................................passed
+Given classroom "CR-102" availability status is "AVAILABLE" on "2026-07-04" from "09:00" to "10:30".passed
+When user "user5@example.com" requests to book classroom "CR-102" on "2026-07-04" from "09:00" to "10:30".passed
+Then the booking status should be "CONFIRMED"...............................passed
+]]></system-out>
+</testcase>
+<testcase classname="End-to-End Classroom Booking Integration" name="Complete flow - API to notification for a confirmed booking" time="2.222">
+<system-out><![CDATA[
+Given the complete system is running with all services:.....................passed
+And RabbitMQ is running on "localhost" port "5672"..........................passed
+And the booking store is empty..............................................passed
+Given classroom "CR-101" is available on "2026-08-01" from "09:00" to "10:00".passed
+When I submit a booking request via the REST API:...........................passed
+Then the API should respond with status "202" and a bookingId...............passed
+And eventually the booking status should become "CONFIRMED".................passed
+And a confirmation notification should be logged for "alice@example.com"....passed
+And all RabbitMQ queues should be empty after processing....................passed
+]]></system-out>
+</testcase>
+<testcase classname="End-to-End Classroom Booking Integration" name="Complete flow - API to notification for a rejected booking" time="2.232">
+<system-out><![CDATA[
+Given the complete system is running with all services:.....................passed
+And RabbitMQ is running on "localhost" port "5672"..........................passed
+And the booking store is empty..............................................passed
+Given classroom "CR-102" has an existing booking on "2026-08-02" from "11:00" to "12:00".passed
+When I submit a booking request via the REST API:...........................passed
+Then the API should respond with status "202" and a bookingId...............passed
+And eventually the booking status should become "REJECTED"..................passed
+And a rejection notification should be logged for "bob@example.com".........passed
+And all RabbitMQ queues should be empty after processing....................passed
+]]></system-out>
+</testcase>
+<testcase classname="End-to-End Classroom Booking Integration" name="Two simultaneous requests for the same slot - only one is confirmed" time="3.176">
+<system-out><![CDATA[
+Given the complete system is running with all services:.....................passed
+And RabbitMQ is running on "localhost" port "5672"..........................passed
+And the booking store is empty..............................................passed
+Given classroom "CR-103" is available on "2026-08-03" from "14:00" to "15:00".passed
+When the following booking requests are submitted concurrently:.............passed
+Then exactly "1" booking should be confirmed................................passed
+And exactly "1" booking should be rejected..................................passed
+And total notifications sent should be "2"..................................passed
+]]></system-out>
+</testcase>
+<testcase classname="End-to-End Classroom Booking Integration" name="Multiple bookings for different classrooms on the same day all succeed" time="2.8">
+<system-out><![CDATA[
+Given the complete system is running with all services:.....................passed
+And RabbitMQ is running on "localhost" port "5672"..........................passed
+And the booking store is empty..............................................passed
+When the following booking requests are submitted in sequence:..............passed
+Then all "3" bookings should be confirmed...................................passed
+And "3" confirmation notifications should have been sent....................passed
+]]></system-out>
+</testcase>
+<testcase classname="End-to-End Classroom Booking Integration" name="Booking the same classroom sequentially in non-overlapping slots all succeed" time="1.782">
+<system-out><![CDATA[
+Given the complete system is running with all services:.....................passed
+And RabbitMQ is running on "localhost" port "5672"..........................passed
+And the booking store is empty..............................................passed
+When the following booking requests are submitted in sequence:..............passed
+Then all "3" bookings should be confirmed...................................passed
+]]></system-out>
+</testcase>
+<testcase classname="End-to-End Classroom Booking Integration" name="Booking request is not lost when availability service is temporarily slow" time="1.079">
+<system-out><![CDATA[
+Given the complete system is running with all services:.....................passed
+And RabbitMQ is running on "localhost" port "5672"..........................passed
+And the booking store is empty..............................................passed
+Given the availability service introduces a delay of "2" seconds............passed
+When I submit a booking request via the REST API:...........................passed
+Then the API should respond with status "202" and a bookingId...............passed
+And eventually within "10" seconds the booking status should become "CONFIRMED".passed
+]]></system-out>
+</testcase>
+<testcase classname="RabbitMQ Messaging Flow" name="Booking service publishes event to booking.requested queue" time="3.656">
+<system-out><![CDATA[
+Given RabbitMQ is running on "localhost" port "5672"........................passed
+And the following queues are declared:......................................passed
+And all queues are empty....................................................passed
+When a booking request is submitted:........................................passed
+Then an event should be present on the "booking.requested" queue............passed
+And the event payload should contain classroomId "CR-101"...................passed
+And the event payload should contain requestedBy "alice@example.com"........passed
+]]></system-out>
+</testcase>
+<testcase classname="RabbitMQ Messaging Flow" name="Availability service consumes event from booking.requested queue" time="5.18">
+<system-out><![CDATA[
+Given RabbitMQ is running on "localhost" port "5672"........................passed
+And the following queues are declared:......................................passed
+And all queues are empty....................................................passed
+Given an event is on the "booking.requested" queue with payload:............passed
+And classroom "CR-102" is available at that time............................passed
+When the availability service consumes the event............................passed
+Then the "booking.requested" queue should be empty..........................passed
+And an event should be present on the "booking.confirmed" queue.............passed
+]]></system-out>
+</testcase>
+<testcase classname="RabbitMQ Messaging Flow" name="Confirmed event is published to booking.confirmed queue when slot is free" time="5.167">
+<system-out><![CDATA[
+Given RabbitMQ is running on "localhost" port "5672"........................passed
+And the following queues are declared:......................................passed
+And all queues are empty....................................................passed
+Given an event is on the "booking.requested" queue with payload:............passed
+And classroom "CR-103" is available at that time............................passed
+When the availability service processes the event...........................passed
+Then an event should be present on the "booking.confirmed" queue............passed
+And the "booking.rejected" queue should be empty............................passed
+]]></system-out>
+</testcase>
+<testcase classname="RabbitMQ Messaging Flow" name="Notification service consumes event from booking.confirmed queue" time="2.63">
+<system-out><![CDATA[
+Given RabbitMQ is running on "localhost" port "5672"........................passed
+And the following queues are declared:......................................passed
+And all queues are empty....................................................passed
+Given an event is on the "booking.confirmed" queue for "dave@example.com"...passed
+When the notification service consumes the event............................passed
+Then the "booking.confirmed" queue should be empty..........................passed
+And a confirmation notification should be logged for "dave@example.com".....passed
+]]></system-out>
+</testcase>
+<testcase classname="RabbitMQ Messaging Flow" name="Rejected event is published to booking.rejected queue when slot is taken" time="5.257">
+<system-out><![CDATA[
+Given RabbitMQ is running on "localhost" port "5672"........................passed
+And the following queues are declared:......................................passed
+And all queues are empty....................................................passed
+Given an event is on the "booking.requested" queue with payload:............passed
+And classroom "CR-101" already has a booking on "2026-06-04" from "11:00" to "12:00".passed
+When the availability service processes the event...........................passed
+Then an event should be present on the "booking.rejected" queue.............passed
+And the "booking.confirmed" queue should be empty...........................passed
+]]></system-out>
+</testcase>
+<testcase classname="RabbitMQ Messaging Flow" name="Notification service consumes event from booking.rejected queue" time="2.646">
+<system-out><![CDATA[
+Given RabbitMQ is running on "localhost" port "5672"........................passed
+And the following queues are declared:......................................passed
+And all queues are empty....................................................passed
+Given an event is on the "booking.rejected" queue for "frank@example.com" with reason "Time slot is already booked".passed
+When the notification service consumes the event............................passed
+Then the "booking.rejected" queue should be empty...........................passed
+And a rejection notification should be logged for "frank@example.com".......passed
+]]></system-out>
+</testcase>
+<testcase classname="RabbitMQ Messaging Flow" name="Full end-to-end flow for a successful booking" time="10.602">
+<system-out><![CDATA[
+Given RabbitMQ is running on "localhost" port "5672"........................passed
+And the following queues are declared:......................................passed
+And all queues are empty....................................................passed
+Given classroom "CR-102" is available on "2026-06-05" from "15:00" to "16:00".passed
+When a booking request is submitted:........................................passed
+Then an event should be present on the "booking.requested" queue............passed
+When the availability service processes the event from "booking.requested"..passed
+Then an event should be present on the "booking.confirmed" queue............passed
+When the notification service processes the event from "booking.confirmed"..passed
+Then a confirmation notification should be logged for "grace@example.com"...passed
+And all queues should be empty..............................................passed
+]]></system-out>
+</testcase>
+<testcase classname="RabbitMQ Messaging Flow" name="Full end-to-end flow for a rejected booking" time="10.635">
+<system-out><![CDATA[
+Given RabbitMQ is running on "localhost" port "5672"........................passed
+And the following queues are declared:......................................passed
+And all queues are empty....................................................passed
+Given classroom "CR-101" has an existing booking on "2026-06-06" from "09:00" to "10:00".passed
+When a booking request is submitted:........................................passed
+Then an event should be present on the "booking.requested" queue............passed
+When the availability service processes the event from "booking.requested"..passed
+Then an event should be present on the "booking.rejected" queue.............passed
+When the notification service processes the event from "booking.rejected"...passed
+Then a rejection notification should be logged for "henry@example.com"......passed
+And all queues should be empty..............................................passed
+]]></system-out>
+</testcase>
+<testcase classname="RabbitMQ Messaging Flow" name="Message payload uses JSON format" time="0.068">
+<system-out><![CDATA[
+Given RabbitMQ is running on "localhost" port "5672"........................passed
+And the following queues are declared:......................................passed
+And all queues are empty....................................................passed
+When a booking request is submitted:........................................passed
+Then the message on "booking.requested" queue should be valid JSON..........passed
+And the JSON payload should have field "classroomId" equal to "CR-103"......passed
+And the JSON payload should have field "requestedBy" equal to "iris@example.com".passed
+And the JSON payload should have field "status" equal to "PENDING"..........passed
+]]></system-out>
+</testcase>
+<testcase classname="Booking Notification" name="Confirmation notification sent on booking confirmed event" time="2.088">
+<system-out><![CDATA[
+Given the notification service is running...................................passed
+And the notification log is empty...........................................passed
+Given a "booking.confirmed" event is published with:........................passed
+When the notification service processes the event...........................passed
+Then a confirmation notification should be logged for "alice@example.com"...passed
+And the notification message should contain "Your booking BK-0001 for CR-101 on 2026-06-01 (09:00 - 10:00) is CONFIRMED".passed
+]]></system-out>
+</testcase>
+<testcase classname="Booking Notification" name="Confirmation notification contains correct classroom and time details" time="3.093">
+<system-out><![CDATA[
+Given the notification service is running...................................passed
+And the notification log is empty...........................................passed
+Given a "booking.confirmed" event is published with:........................passed
+When the notification service processes the event...........................passed
+Then a confirmation notification should be logged for "bob@example.com".....passed
+And the notification message should contain "CR-103"........................passed
+And the notification message should contain "14:00 - 16:00".................passed
+And the notification message should contain "2026-07-15"....................passed
+]]></system-out>
+</testcase>
+<testcase classname="Booking Notification" name="Rejection notification sent on booking rejected event" time="2.584">
+<system-out><![CDATA[
+Given the notification service is running...................................passed
+And the notification log is empty...........................................passed
+Given a "booking.rejected" event is published with:.........................passed
+When the notification service processes the event...........................passed
+Then a rejection notification should be logged for "carol@example.com"......passed
+And the notification message should contain "Your booking request for CR-102 on 2026-06-02 has been REJECTED".passed
+And the notification message should contain "Time slot is already booked"...passed
+]]></system-out>
+</testcase>
+<testcase classname="Booking Notification" name="Rejection notification includes the reason for rejection" time="2.071">
+<system-out><![CDATA[
+Given the notification service is running...................................passed
+And the notification log is empty...........................................passed
+Given a "booking.rejected" event is published with:.........................passed
+When the notification service processes the event...........................passed
+Then a rejection notification should be logged for "dave@example.com".......passed
+And the notification message should contain "Time slot is already booked"...passed
+]]></system-out>
+</testcase>
+<testcase classname="Booking Notification" name="Multiple notifications sent for multiple events in sequence" time="4.596">
+<system-out><![CDATA[
+Given the notification service is running...................................passed
+And the notification log is empty...........................................passed
+Given the following booking events are published:...........................passed
+When the notification service processes all events..........................passed
+Then "3" notifications should have been sent................................passed
+And a confirmation notification should be logged for "user1@example.com"....passed
+And a rejection notification should be logged for "user2@example.com".......passed
+And a confirmation notification should be logged for "user3@example.com"....passed
+]]></system-out>
+</testcase>
+<testcase classname="Booking Notification" name="Duplicate event does not produce duplicate notification" time="6.061">
+<system-out><![CDATA[
+Given the notification service is running...................................passed
+And the notification log is empty...........................................passed
+Given a "booking.confirmed" event is published with:........................passed
+And the same event is published again.......................................passed
+When the notification service processes both events.........................passed
+Then only "1" notification should have been sent for "BK-0020"..............passed
+]]></system-out>
+</testcase>
+</testsuite>

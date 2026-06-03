@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ─────────────────────────────────────────────────────────────────────────────
+     Camel XML DSL Routes — API Gateway
+     Replaces the former Java-DSL BookingRoute.java.
+     Loaded via: camel.springboot.routes-include-pattern=classpath:camel/*.xml
+     ───────────────────────────────────────────────────────────────────────────── -->
+<routes xmlns="http://camel.apache.org/schema/java">
+
+    <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+         ROUTE: validate-booking-route
+         Entry point from REST DSL. Delegates to processSingleBooking.
+         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+    <route id="validate-booking-route">
+        <from uri="direct:validateBooking"/>
+        <to uri="direct:processSingleBooking"/>
+    </route>
+
+    <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+         ROUTE: process-single-booking
+         Shared validation + route slip logic used by both single and batch.
+         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+    <route id="process-single-booking">
+        <from uri="direct:processSingleBooking"/>
+
+        <!-- Exception handlers for this route -->
+        <onException>
+            <exception>com.classroom.gateway.exception.UnsupportedMediaTypeException</exception>
+            <handled><constant>true</constant></handled>
+            <setHeader name="CamelHttpResponseCode"><constant>415</constant></setHeader>
+            <setHeader name="Content-Type"><constant>application/json</constant></setHeader>
+            <setBody><simple>{"error":"Unsupported Media Type","message":"${exception.message}"}</simple></setBody>
+        </onException>
+        <onException>
+            <exception>java.lang.IllegalArgumentException</exception>
+            <handled><constant>true</constant></handled>
+            <setHeader name="CamelHttpResponseCode"><constant>400</constant></setHeader>
+            <setHeader name="Content-Type"><constant>application/json</constant></setHeader>
+            <setBody><simple>{"error":"Bad Request","message":"${exception.message}"}</simple></setBody>
+        </onException>
+        <onException>
+            <exception>java.net.ConnectException</exception>
+            <handled><constant>true</constant></handled>
+            <setHeader name="CamelHttpResponseCode"><constant>503</constant></setHeader>
+            <setHeader name="Content-Type"><constant>application/json</constant></setHeader>
+            <setBody><constant>{"error":"Booking service is currently unavailable. Please try again later."}</constant></setBody>
+        </onException>
+
+        <log message="[GATEWAY] Validating incoming booking request"/>
+
+        <!-- Content-Type check: rejects non-JSON → 415 -->
+        <process ref="contentTypeValidatorProcessor"/>
+
+        <!-- Deserialize JSON → BookingRequest POJO -->
+        <process ref="bookingDeserializerProcessor"/>
+
+        <!-- Field guards -->
+        <choice>
+            <when>
+                <simple>${body.classroomId} == null || ${body.classroomId} == ''</simple>
+                <throwException exceptionType="java.lang.IllegalArgumentException"
+                                message="classroomId must not be blank"/>
+            </when>
+            <when>
+                <simple>${body.requestedBy} == null || ${body.requestedBy} == ''</simple>
+                <throwException exceptionType="java.lang.IllegalArgumentException"
+                                message="requestedBy must not be blank"/>
+            </when>
+            <when>
+                <simple>${body.date} == null</simple>
+                <throwException exceptionType="java.lang.IllegalArgumentException"
+                                message="date must not be null"/>
+            </when>
+            <when>
+                <simple>${body.timeSlot} == null</simple>
+                <throwException exceptionType="java.lang.IllegalArgumentException"
+                                message="timeSlot must not be null"/>
+            </when>
+        </choice>
+
+        <!-- Time slot ordering check: endTime must be after startTime -->
+        <process ref="timeSlotValidatorProcessor"/>
+
+        <log message="[GATEWAY] Validation passed | classroom=${body.classroomId} | date=${body.date}"/>
+
+        <!-- Forward to the route slip dispatcher (defined in Java DSL) -->
+        <to uri="direct:routeSlipDispatcher"/>
+
+        <!-- Ensure the response body from the pipeline is returned to the client.
+             The submit-booking-route saves it in 'bookingResponseBody' header. -->
+        <choice>
+            <when>
+                <simple>${header.bookingResponseBody} != null</simple>
+                <setBody>
+                    <header>bookingResponseBody</header>
+                </setBody>
+                <removeHeader name="bookingResponseBody"/>
+            </when>
+        </choice>
+    </route>
+
+    <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+         ROUTE: audit-route
+         POSTs the booking payload to service-audit for audit logging.
+         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+    <route id="audit-route">
+        <from uri="direct:audit"/>
+
+        <log message="[GATEWAY] Sending audit event"/>
+
+        <!-- Save the current response code and body before audit call overwrites them -->
+        <setHeader name="originalResponseCode">
+            <simple>${header.CamelHttpResponseCode}</simple>
+        </setHeader>
+
+        <!-- Body might be a POJO or a JSON string; ensure it's a JSON string -->
+        <choice>
+            <when>
+                <simple>${body} is 'java.lang.String'</simple>
+                <!-- Already a JSON string (e.g. from submit response) -->
+            </when>
+            <otherwise>
+                <!-- POJO — serialize to JSON -->
+                <process ref="bookingSerializerProcessor"/>
+            </otherwise>
+        </choice>
+
+        <!-- Store original body for restoration after audit HTTP call -->
+        <setHeader name="auditPayload">
+            <simple>${body}</simple>
+        </setHeader>
+
+        <setHeader name="CamelHttpMethod">
+            <constant>POST</constant>
+        </setHeader>
+        <setHeader name="Content-Type">
+            <constant>application/json</constant>
+        </setHeader>
+
+        <removeHeader name="CamelHttpPath"/>
+        <removeHeader name="CamelHttpQuery"/>
+        <removeHeader name="CamelHttpUri"/>
+
+        <doTry>
+            <to id="toAuditService" uri="{{services.audit.url}}/audit/bookings?bridgeEndpoint=true&amp;throwExceptionOnFailure=false&amp;connectTimeout=3000&amp;socketTimeout=5000"/>
+            <log message="[GATEWAY] Audit event recorded | HTTP ${header.CamelHttpResponseCode}"/>
+            <doCatch>
+                <exception>java.net.ConnectException</exception>
+                <log loggingLevel="WARN" message="[GATEWAY] Audit service unavailable — continuing without audit"/>
+            </doCatch>
+        </doTry>
+
+        <!-- Restore the original body and response code -->
+        <setBody>
+            <header>auditPayload</header>
+        </setBody>
+        <setHeader name="CamelHttpResponseCode">
+            <header>originalResponseCode</header>
+        </setHeader>
+        <removeHeader name="originalResponseCode"/>
+        <removeHeader name="auditPayload"/>
+    </route>
+
+    <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+         ROUTE: submit-booking-route
+         Forwards the validated booking to service-booking via HTTP.
+         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+    <route id="submit-booking-route">
+        <from uri="direct:submitBooking"/>
+
+        <log message="[GATEWAY] Forwarding booking request | classroom=${body.classroomId} | date=${body.date} | slot=${body.timeSlot} | requestedBy=${body.requestedBy}"/>
+
+        <!-- Prepare HTTP headers -->
+        <removeHeader name="CamelHttpPath"/>
+        <removeHeader name="CamelHttpQuery"/>
+        <removeHeader name="CamelHttpUri"/>
+        <removeHeader name="breadcrumbId"/>
+        <setHeader name="CamelHttpMethod">
+            <constant>POST</constant>
+        </setHeader>
+        <setHeader name="Content-Type">
+            <constant>application/json</constant>
+        </setHeader>
+
+        <!-- Serialize POJO → JSON -->
+        <process ref="bookingSerializerProcessor"/>
+
+        <!-- Forward to service-booking -->
+        <to id="toBookingService" uri="{{services.booking.url}}/bookings?bridgeEndpoint=true&amp;throwExceptionOnFailure=false&amp;connectTimeout=5000&amp;socketTimeout=10000"/>
+
+        <log message="[GATEWAY] Received response from service-booking | HTTP ${header.CamelHttpResponseCode}"/>
+
+        <!-- Save the response body so validate-booking-route can return it to the client -->
+        <convertBodyTo type="java.lang.String"/>
+        <setHeader name="bookingResponseBody">
+            <simple>${body}</simple>
+        </setHeader>
+
+        <choice>
+            <when>
+                <simple>${header.CamelHttpResponseCode} == 202</simple>
+                <log message="[GATEWAY] Booking accepted | setting response 202"/>
+                <setHeader name="CamelHttpResponseCode">
+                    <constant>202</constant>
+                </setHeader>
+            </when>
+            <when>
+                <simple>${header.CamelHttpResponseCode} == 400</simple>
+                <log loggingLevel="WARN" message="[GATEWAY] Booking validation rejected by service (400)"/>
+                <setHeader name="CamelHttpResponseCode">
+                    <constant>400</constant>
+                </setHeader>
+            </when>
+            <otherwise>
+                <log loggingLevel="WARN" message="[GATEWAY] Unexpected response code: ${header.CamelHttpResponseCode}"/>
+                <setHeader name="CamelHttpResponseCode">
+                    <constant>502</constant>
+                </setHeader>
+                <setHeader name="Content-Type">
+                    <constant>application/json</constant>
+                </setHeader>
+                <setBody>
+                    <constant>{"error":"Upstream service returned an unexpected response."}</constant>
+                </setBody>
+            </otherwise>
+        </choice>
+    </route>
+
+    <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+         ROUTE: batch-booking-route
+         Splits a JSON array of bookings, processes each through the route slip,
+         then aggregates results into a single JSON array response.
+         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+    <route id="batch-booking-route">
+        <from uri="direct:batchBooking"/>
+
+        <log message="[GATEWAY] Processing batch booking request"/>
+
+        <!-- Ensure body is a String for jsonpath parsing -->
+        <convertBodyTo type="java.lang.String"/>
+
+        <!-- Split the JSON array and process each item individually -->
+        <split aggregationStrategy="#batchAggregationStrategy">
+            <jsonpath>$</jsonpath>
+
+            <!-- Each split item is a JSON object string; set Content-Type for validation -->
+            <setHeader name="Content-Type">
+                <constant>application/json</constant>
+            </setHeader>
+
+            <!-- Convert split result (LinkedHashMap) back to JSON string for deserialization -->
+            <marshal>
+                <json library="Jackson"/>
+            </marshal>
+
+            <!-- Run through the full validation + route slip pipeline -->
+            <doTry>
+                <to uri="direct:processSingleBooking"/>
+                <doCatch>
+                    <exception>java.lang.IllegalArgumentException</exception>
+                    <setBody>
+                        <simple>{"error":"Bad Request","message":"${exception.message}"}</simple>
+                    </setBody>
+                </doCatch>
+                <doCatch>
+                    <exception>java.lang.Exception</exception>
+                    <setBody>
+                        <simple>{"error":"Internal error","message":"${exception.message}"}</simple>
+                    </setBody>
+                </doCatch>
+            </doTry>
+        </split>
+
+        <!-- Finalize the aggregated response -->
+        <process ref="batchCompletionProcessor"/>
+    </route>
+
+    <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+         ROUTE: gateway-info-route (GET /bookings)
+         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+    <route id="gateway-info-route">
+        <from uri="direct:gatewayInfo"/>
+        <setHeader name="CamelHttpResponseCode">
+            <constant>200</constant>
+        </setHeader>
+        <setHeader name="Content-Type">
+            <constant>application/json</constant>
+        </setHeader>
+        <setBody>
+            <constant>{"service":"api-gateway-camel","status":"UP","description":"Use POST /bookings to submit a booking request. Use POST /bookings/batch for batch submissions."}</constant>
+        </setBody>
+    </route>
+
+</routes>
+

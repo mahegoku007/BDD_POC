@@ -1,0 +1,22 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# service-audit Service (ClusterIP)
+# Exposes the audit service on port 8084 within the cluster.
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-audit
+  namespace: classroom-booking
+  labels:
+    app: service-audit
+    app.kubernetes.io/name: service-audit
+    app.kubernetes.io/component: audit
+spec:
+  selector:
+    app: service-audit
+  ports:
+    - port: 8084
+      targetPort: 8084
+      name: http
+  type: LoadBalancer
+

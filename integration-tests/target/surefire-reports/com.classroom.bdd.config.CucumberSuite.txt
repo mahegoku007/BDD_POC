@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.classroom.bdd.config.CucumberSuite
+-------------------------------------------------------------------------------
+Tests run: 65, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 122.7 s -- in com.classroom.bdd.config.CucumberSuite

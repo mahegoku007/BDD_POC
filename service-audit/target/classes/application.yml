@@ -1,0 +1,41 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: service-audit
+
+  # ── MongoDB connection ─────────────────────────────────────────────────────
+  # Credentials injected from K8s Secret (mongodb-secret) via env vars.
+  data:
+    mongodb:
+      uri: ${MONGO_URI:mongodb://localhost:27017/classroom_audit}
+      username: ${MONGO_USERNAME:}
+      password: ${MONGO_PASSWORD:}
+      database: classroom_audit
+
+  # ── Jackson ────────────────────────────────────────────────────────────────
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+# ── Management / Actuator ──────────────────────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+
+# ── Logging ────────────────────────────────────────────────────────────────
+logging:
+  level:
+    root: INFO
+    com.classroom.audit: DEBUG
+    org.springframework.data.mongodb: INFO
+

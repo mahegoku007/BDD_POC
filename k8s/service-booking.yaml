@@ -27,7 +27,7 @@ spec:
       containers:
         - name: service-booking
           image: classroom/service-booking:latest
-          imagePullPolicy: IfNotPresent   # Rancher Desktop: image is built locally into containerd/dockerd
+          imagePullPolicy: Never   # Rancher Desktop: image is built locally into containerd/dockerd
           ports:
             - name: http
               containerPort: 8081
@@ -84,5 +84,5 @@ spec:
     - name: http
       port: 8081
       targetPort: 8081
-  type: ClusterIP
+  type: LoadBalancer
 

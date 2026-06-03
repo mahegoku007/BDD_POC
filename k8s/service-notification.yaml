@@ -27,7 +27,7 @@ spec:
       containers:
         - name: service-notification
           image: classroom/service-notification:latest
-          imagePullPolicy: IfNotPresent   # Rancher Desktop: image is built locally into containerd/dockerd
+          imagePullPolicy: Never   # Rancher Desktop: image is built locally into containerd/dockerd
           ports:
             - name: http
               containerPort: 8083
@@ -84,5 +84,5 @@ spec:
     - name: http
       port: 8083
       targetPort: 8083
-  type: ClusterIP
+  type: LoadBalancer
 

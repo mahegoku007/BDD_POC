@@ -1,0 +1,72 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# service-audit Deployment
+# Audit microservice that records booking events in MongoDB.
+# Accessed by the API Gateway's route-slip pipeline via HTTP.
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-audit
+  namespace: classroom-booking
+  labels:
+    app: service-audit
+    app.kubernetes.io/name: service-audit
+    app.kubernetes.io/component: audit
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: service-audit
+  template:
+    metadata:
+      labels:
+        app: service-audit
+    spec:
+      containers:
+        - name: service-audit
+          image: classroom/service-audit:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8084
+              name: http
+          envFrom:
+            - configMapRef:
+                name: classroom-config
+            - secretRef:
+                name: mongodb-secret
+          env:
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: MONGO_URI
+            - name: MONGO_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: MONGO_USERNAME
+            - name: MONGO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: MONGO_PASSWORD
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8084
+            initialDelaySeconds: 40
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8084
+            initialDelaySeconds: 60
+            periodSeconds: 15
+

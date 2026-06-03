@@ -9,6 +9,7 @@
 #        nerdctl --namespace k8s.io build -t classroom/service-booking:latest      ./service-booking
 #        nerdctl --namespace k8s.io build -t classroom/service-availability:latest ./service-availability
 #        nerdctl --namespace k8s.io build -t classroom/service-notification:latest ./service-notification
+#        nerdctl --namespace k8s.io build -t classroom/service-audit:latest        ./service-audit
 #
 #      NOTE: If you see "error getting credentials - exit status 22", run this ONCE to fix it:
 #        [System.IO.File]::WriteAllText("\\wsl$\rancher-desktop\root\.docker\config.json",
@@ -37,19 +38,23 @@ resources:
 
   # 2. Secrets & config
   - rabbitmq-secret.yaml
+  - mongodb-secret.yaml
   - configmap.yaml
 
   # 3. Storage
   - rabbitmq-pvc.yaml
 
-  # 4. Infrastructure (RabbitMQ)
+  # 4. Infrastructure (RabbitMQ, MongoDB)
   - rabbitmq-deployment.yaml
   - rabbitmq-service.yaml
+  - mongodb-deployment.yaml
 
   # 5. Microservices
   - service-booking.yaml
   - service-availability.yaml
   - service-notification.yaml
+  - service-audit-deployment.yaml
+  - service-audit-service.yaml
 
   # 6. Gateway (last – depends on all services being up)
   - api-gateway-deployment.yaml
@@ -63,4 +68,3 @@ resources:
 commonLabels:
   app.kubernetes.io/part-of: classroom-booking-system
   app.kubernetes.io/managed-by: kustomize
-

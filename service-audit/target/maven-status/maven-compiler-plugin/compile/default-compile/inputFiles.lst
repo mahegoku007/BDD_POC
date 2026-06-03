@@ -1,0 +1,5 @@
+C:\AA\BDD_POC\service-audit\src\main\java\com\classroom\audit\AuditServiceApplication.java
+C:\AA\BDD_POC\service-audit\src\main\java\com\classroom\audit\controller\AuditController.java
+C:\AA\BDD_POC\service-audit\src\main\java\com\classroom\audit\model\AuditEvent.java
+C:\AA\BDD_POC\service-audit\src\main\java\com\classroom\audit\repository\AuditEventRepository.java
+C:\AA\BDD_POC\service-audit\src\main\java\com\classroom\audit\service\AuditService.java

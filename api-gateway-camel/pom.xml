@@ -76,6 +76,16 @@
       <groupId>org.apache.camel.springboot</groupId>
       <artifactId>camel-log-starter</artifactId>
     </dependency>
+    <!-- Camel JSONPath for split expressions in batch routes -->
+    <dependency>
+      <groupId>org.apache.camel.springboot</groupId>
+      <artifactId>camel-jsonpath-starter</artifactId>
+    </dependency>
+    <!-- Camel XML IO DSL – required to load XML route definitions at runtime -->
+    <dependency>
+      <groupId>org.apache.camel.springboot</groupId>
+      <artifactId>camel-xml-io-dsl-starter</artifactId>
+    </dependency>
 
     <!-- ── Spring AMQP / RabbitMQ ────────────── -->
     <dependency>
